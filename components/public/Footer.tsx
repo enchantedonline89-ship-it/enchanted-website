@@ -1,4 +1,5 @@
 import { WHATSAPP_FLOAT_URL } from '@/lib/whatsapp'
+import Logo from '@/components/public/Logo'
 
 export default function Footer() {
   return (
@@ -7,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Brand */}
           <div>
-            <img src="/logo.svg" alt="Enchanted Style" className="h-12 w-auto object-contain mb-4" />
+            <Logo className="h-10 w-auto object-contain mb-4" />
             <p className="text-muted text-sm leading-relaxed max-w-xs">
               Curated women&apos;s fashion from Lebanon. Where glamour meets edge.
             </p>

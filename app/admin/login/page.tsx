@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Logo from '@/components/public/Logo'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -33,7 +34,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-10">
-          <img src="/logo.svg" alt="Enchanted Style" className="h-12 w-auto object-contain mx-auto mb-4" />
+          <Logo className="h-12 w-auto object-contain mx-auto mb-4" />
           <h1 className="font-display text-3xl text-foreground">Admin Access</h1>
           <p className="text-muted text-sm mt-2">Sign in to manage your catalog</p>
         </div>

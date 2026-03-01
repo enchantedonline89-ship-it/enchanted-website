@@ -2,6 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import Logo from '@/components/public/Logo'
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: '⬡' },
@@ -24,7 +25,7 @@ export default function AdminSidebar() {
     <aside className="w-64 min-h-screen bg-surface border-r border-border flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-border">
-        <img src="/logo.svg" alt="Enchanted Style" className="h-8 w-auto object-contain" />
+        <Logo className="h-8 w-auto object-contain" />
         <p className="text-muted text-xs mt-1 tracking-widest uppercase">Admin Panel</p>
       </div>
 

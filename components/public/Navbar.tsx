@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/lib/cart-context'
 import { WHATSAPP_FLOAT_URL } from '@/lib/whatsapp'
+import Logo from '@/components/public/Logo'
 
 const NAV_LINKS = [
   { label: 'Collections', href: '#catalog' },
@@ -41,11 +42,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 lg:h-20">
           {/* LEFT: Logo */}
           <a href="/" className="flex-shrink-0" data-hover>
-            <img
-              src="/logo.svg"
-              alt="Enchanted Style"
-              className="h-9 w-auto object-contain"
-            />
+            <Logo className="h-9 w-auto" />
           </a>
 
           {/* CENTER: Nav links (desktop only) */}
