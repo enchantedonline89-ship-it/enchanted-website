@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 
@@ -17,6 +17,8 @@ export default function ImageLightbox({
   onClose,
   onNavigate,
 }: ImageLightboxProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   const prev = useCallback(() => {
     onNavigate(currentIndex === 0 ? images.length - 1 : currentIndex - 1)
   }, [currentIndex, images.length, onNavigate])
@@ -25,11 +27,34 @@ export default function ImageLightbox({
     onNavigate(currentIndex === images.length - 1 ? 0 : currentIndex + 1)
   }, [currentIndex, images.length, onNavigate])
 
+  // Focus the dialog on mount so keyboard users don't need to tab to it
+  useEffect(() => {
+    const el = dialogRef.current
+    if (!el) return
+    el.focus()
+  }, [])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowLeft') prev()
-      if (e.key === 'ArrowRight') next()
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'ArrowLeft') { prev(); return }
+      if (e.key === 'ArrowRight') { next(); return }
+      // Focus trap: keep Tab/Shift-Tab within the dialog
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter(el => !el.hasAttribute('disabled'))
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus() }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus() }
+        }
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -41,11 +66,16 @@ export default function ImageLightbox({
     return () => { document.body.style.overflow = '' }
   }, [])
 
+  if (typeof document === 'undefined') return null
+
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center"
+      aria-label="Product image lightbox"
+      tabIndex={-1}
+      className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center outline-none"
       onClick={onClose}
     >
       {/* Image container — stop propagation so clicking image doesn't close */}
