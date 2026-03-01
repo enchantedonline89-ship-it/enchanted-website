@@ -77,8 +77,17 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
       <input
         type="url"
         value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Paste image URL or upload below"
+        onChange={e => {
+          const url = e.target.value
+          // Only accept HTTPS URLs to prevent mixed-content and SSRF via HTTP
+          if (url && !url.startsWith('https://')) {
+            setError('Only HTTPS image URLs are accepted')
+            return
+          }
+          setError(null)
+          onChange(url)
+        }}
+        placeholder="Paste HTTPS image URL or upload below"
         className="w-full bg-card border border-border rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
       />
 

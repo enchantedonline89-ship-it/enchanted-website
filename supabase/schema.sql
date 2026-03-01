@@ -81,23 +81,79 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
 
--- Categories: anyone can read active; only authenticated admin can write
+-- ============================================================
+-- IMPORTANT: Disable public sign-ups in Supabase Dashboard
+-- Authentication → Providers → Email → toggle "Enable sign ups" OFF
+-- This ensures only manually-created admin accounts can authenticate.
+-- ============================================================
+
+-- Categories: anon can read only active rows
 CREATE POLICY "categories_public_read" ON categories
   FOR SELECT USING (is_active = TRUE);
 
-CREATE POLICY "categories_admin_all" ON categories
-  FOR ALL USING (auth.role() = 'authenticated');
+-- Authenticated (admin) can read ALL rows (including inactive)
+CREATE POLICY "categories_admin_select" ON categories
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Products: anyone can read active; only authenticated admin can write
+-- Authenticated admin can INSERT/UPDATE/DELETE
+CREATE POLICY "categories_admin_insert" ON categories
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "categories_admin_update" ON categories
+  FOR UPDATE
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "categories_admin_delete" ON categories
+  FOR DELETE USING (auth.uid() IS NOT NULL);
+
+-- Products: anon can read only active rows
 CREATE POLICY "products_public_read" ON products
   FOR SELECT USING (is_active = TRUE);
 
-CREATE POLICY "products_admin_all" ON products
-  FOR ALL USING (auth.role() = 'authenticated');
+-- Authenticated (admin) can read ALL rows
+CREATE POLICY "products_admin_select" ON products
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Authenticated admin can INSERT/UPDATE/DELETE
+CREATE POLICY "products_admin_insert" ON products
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "products_admin_update" ON products
+  FOR UPDATE
+  USING (auth.uid() IS NOT NULL)
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "products_admin_delete" ON products
+  FOR DELETE USING (auth.uid() IS NOT NULL);
 
 -- Admin logs: only authenticated admin can read/write
-CREATE POLICY "logs_admin_all" ON admin_logs
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "logs_admin_select" ON admin_logs
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "logs_admin_insert" ON admin_logs
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- ============================================================
+-- STORAGE RLS — Run AFTER creating the product-images bucket
+-- In Supabase Dashboard: Storage → product-images → Policies
+-- ============================================================
+-- Anyone can read (download) files from the public bucket
+-- Only authenticated users can upload files
+-- SQL to run in Supabase SQL editor for Storage policies:
+--
+-- INSERT INTO storage.policies (name, bucket_id, definition, check_definition, command, roles)
+-- VALUES
+--   ('storage_public_read', 'product-images',
+--    'true', NULL, 'SELECT', '{anon,authenticated}'),
+--   ('storage_admin_insert', 'product-images',
+--    NULL, '(auth.uid() IS NOT NULL)', 'INSERT', '{authenticated}'),
+--   ('storage_admin_update', 'product-images',
+--    '(auth.uid() IS NOT NULL)', '(auth.uid() IS NOT NULL)', 'UPDATE', '{authenticated}'),
+--   ('storage_admin_delete', 'product-images',
+--    '(auth.uid() IS NOT NULL)', NULL, 'DELETE', '{authenticated}');
+--
+-- Alternatively configure via Dashboard: Storage → product-images → Policies → New Policy
 
 -- ============================================================
 -- INDEXES

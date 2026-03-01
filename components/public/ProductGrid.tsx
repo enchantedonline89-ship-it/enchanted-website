@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import CategoryFilter from '@/components/public/CategoryFilter'
@@ -14,6 +14,7 @@ interface ProductGridProps {
 
 export default function ProductGrid({ products, categories }: ProductGridProps) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null)
+  const isFirstFilterRender = useRef(true)
 
   const filtered = activeSlug
     ? products.filter((p) => p.category?.slug === activeSlug)
@@ -45,8 +46,13 @@ export default function ProductGrid({ products, categories }: ProductGridProps) 
     }
   }, [])
 
-  // Re-trigger animation on filter change
+  // Re-trigger animation on filter change (skip initial mount)
   useEffect(() => {
+    if (isFirstFilterRender.current) {
+      isFirstFilterRender.current = false
+      return
+    }
+
     gsap.registerPlugin(ScrollTrigger)
 
     // Small delay to let React re-render the filtered items first

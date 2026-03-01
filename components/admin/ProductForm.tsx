@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Product, Category } from '@/types'
 import ImageUpload from './ImageUpload'
-import { slugify } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -61,6 +60,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('SESSION_EXPIRED')
 
       if (mode === 'create') {
         const { data, error: dbError } = await supabase
@@ -71,7 +71,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
         if (dbError) throw dbError
 
         await supabase.from('admin_logs').insert({
-          admin_email: user!.email!,
+          admin_email: user.email ?? 'unknown',
           action: 'CREATE',
           entity_type: 'product',
           entity_id: data.id,
@@ -89,7 +89,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
         if (dbError) throw dbError
 
         await supabase.from('admin_logs').insert({
-          admin_email: user!.email!,
+          admin_email: user.email ?? 'unknown',
           action: 'UPDATE',
           entity_type: 'product',
           entity_id: data.id,
@@ -98,12 +98,20 @@ export default function ProductForm({ product, categories, mode }: Props) {
         })
       }
 
-      // Trigger ISR revalidation
+      // Trigger ISR revalidation (auth checked server-side)
       await fetch('/api/revalidate', { method: 'POST' })
       router.push('/admin/products')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      // Sanitize error messages — never expose raw DB error strings
+      const msg = err instanceof Error ? err.message : 'unknown'
+      if (msg === 'SESSION_EXPIRED') {
+        setError('Your session has expired. Please sign in again.')
+      } else if (msg.includes('duplicate key') || msg.includes('unique')) {
+        setError('A product with this name or slug already exists.')
+      } else {
+        setError('Failed to save product. Please try again.')
+      }
     } finally {
       setSaving(false)
     }
@@ -190,7 +198,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       {/* Sort Order */}
       <div>
         <label className={labelClass}>Sort Order</label>
-        <input type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value))} className={inputClass} style={{width: '120px'}} />
+        <input type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value) || 0)} className={inputClass} style={{width: '120px'}} />
       </div>
 
       {/* Submit */}

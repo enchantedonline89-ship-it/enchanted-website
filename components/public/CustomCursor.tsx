@@ -1,14 +1,19 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function CustomCursor() {
-  if (typeof window === 'undefined') return null
-
   const dotRef = useRef<HTMLDivElement>(null)
   const ringRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Mount flag — avoids SSR mismatch and Rules of Hooks violation
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
+    if (!mounted) return
     const dot = dotRef.current
     const ring = ringRef.current
     if (!dot || !ring) return
@@ -70,7 +75,9 @@ export default function CustomCursor() {
       document.removeEventListener('mouseover', handleMouseEnter)
       document.removeEventListener('mouseout', handleMouseLeave)
     }
-  }, [])
+  }, [mounted])
+
+  if (!mounted) return null
 
   return (
     <>

@@ -40,23 +40,31 @@ export default function CategoryForm({ category, mode }: Props) {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('SESSION_EXPIRED')
 
       if (mode === 'create') {
         const { data, error: dbError } = await supabase.from('categories').insert(payload).select().single()
         if (dbError) throw dbError
-        await supabase.from('admin_logs').insert({ admin_email: user!.email!, action: 'CREATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before: null, after: data } })
+        await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'CREATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before: null, after: data } })
       } else {
         const { data: before } = await supabase.from('categories').select().eq('id', category!.id).single()
         const { data, error: dbError } = await supabase.from('categories').update(payload).eq('id', category!.id).select().single()
         if (dbError) throw dbError
-        await supabase.from('admin_logs').insert({ admin_email: user!.email!, action: 'UPDATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before, after: data } })
+        await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'UPDATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before, after: data } })
       }
 
       await fetch('/api/revalidate', { method: 'POST' })
       router.push('/admin/categories')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      const msg = err instanceof Error ? err.message : 'unknown'
+      if (msg === 'SESSION_EXPIRED') {
+        setError('Your session has expired. Please sign in again.')
+      } else if (msg.includes('duplicate key') || msg.includes('unique')) {
+        setError('A category with this name or slug already exists.')
+      } else {
+        setError('Failed to save category. Please try again.')
+      }
     } finally {
       setSaving(false)
     }
@@ -85,7 +93,7 @@ export default function CategoryForm({ category, mode }: Props) {
       <div className="flex gap-4 items-end">
         <div>
           <label className={labelClass}>Sort Order</label>
-          <input type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value))} className={inputClass} style={{width: '120px'}} />
+          <input type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value) || 0)} className={inputClass} style={{width: '120px'}} />
         </div>
         <label className="flex items-center gap-3 cursor-pointer pb-3">
           <div onClick={() => set('is_active', !form.is_active)} className={`relative w-11 h-6 rounded-full transition-colors ${form.is_active ? 'bg-gold' : 'bg-border'}`}>
