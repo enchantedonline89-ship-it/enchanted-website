@@ -1,50 +1,57 @@
-import { createClient } from "@/lib/supabase/server"
 import Navbar from "@/components/public/Navbar"
 import Hero from "@/components/public/Hero"
 import ProductGrid from "@/components/public/ProductGrid"
 import Footer from "@/components/public/Footer"
 import CustomCursor from "@/components/public/CustomCursor"
 import WhatsAppFloat from "@/components/public/WhatsAppFloat"
+import CartDrawer from "@/components/public/CartDrawer"
 import { Product, Category } from "@/types"
+import { mockProducts, mockCategories, isSupabaseMockMode } from "@/lib/mock-data"
 
-export const revalidate = 3600 // ISR: revalidate at most every hour
+export const revalidate = 3600
 
 export default async function HomePage() {
-  const supabase = await createClient()
+  let products: Product[] = []
+  let categories: Category[] = []
 
-  const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("*, category:categories(id, name, slug)")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true }),
-  ])
+  if (isSupabaseMockMode()) {
+    // Preview mode — no Supabase configured yet
+    products = mockProducts
+    categories = mockCategories
+  } else {
+    // Production mode — fetch from Supabase
+    const { createClient } = await import("@/lib/supabase/server")
+    const supabase = await createClient()
+
+    const [{ data: dbProducts }, { data: dbCategories }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("*, category:categories(id, name, slug)")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+    ])
+
+    products = (dbProducts ?? []) as Product[]
+    categories = (dbCategories ?? []) as Category[]
+  }
 
   return (
     <>
-      {/* Custom cursor — client component */}
       <CustomCursor />
-
-      {/* Sticky nav */}
       <Navbar />
 
       <main>
-        {/* WebGL hero */}
         <Hero />
 
-        {/* Product catalog */}
-        <ProductGrid
-          products={(products ?? []) as Product[]}
-          categories={(categories ?? []) as Category[]}
-        />
+        <ProductGrid products={products} categories={categories} />
 
-        {/* About / brand blurb */}
+        {/* About section */}
         <section id="about" className="py-24 px-4 max-w-4xl mx-auto text-center">
           <p className="text-gold text-xs tracking-[0.4em] uppercase mb-4">Our Story</p>
           <h2 className="font-display text-4xl lg:text-5xl text-white mb-6 leading-tight">
@@ -73,8 +80,7 @@ export default async function HomePage() {
       </main>
 
       <Footer />
-
-      {/* Floating WhatsApp CTA */}
+      <CartDrawer />
       <WhatsAppFloat />
     </>
   )
