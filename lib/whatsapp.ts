@@ -8,6 +8,7 @@ export const WHATSAPP_PHONE = '96181351084'
 
 export interface OrderPayload {
   full_name: string
+  user_email: string
   phone: string
   area: 'beirut' | 'outside'
   city?: string | null
@@ -75,6 +76,7 @@ export function buildOwnerNotificationURL(order: OrderPayload): string {
     'Hi! New order from Enchanted Style 🌸',
     '',
     `👤 Name: ${order.full_name}`,
+    `📧 Email: ${order.user_email}`,
     `📞 Phone: ${order.phone}`,
     `📍 Area: ${areaLabel}`,
     `🏠 Address: ${order.delivery_address}`,

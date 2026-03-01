@@ -136,6 +136,7 @@ export default function CartDrawer() {
       // Open owner notification in WhatsApp
       const ownerPayload: OrderPayload = {
         full_name: fullName.trim(),
+        user_email: user.email ?? '',
         phone: phone.trim(),
         area: area as 'beirut' | 'outside',
         city: area === 'outside' ? city.trim() || null : null,
