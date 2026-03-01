@@ -1,3 +1,4 @@
+// middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -25,34 +26,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Protect all /admin routes except /admin/login
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    if (!user) {
-      const loginUrl = request.nextUrl.clone()
-      loginUrl.pathname = '/admin/login'
-      return NextResponse.redirect(loginUrl)
-    }
+  // Already logged in → redirect away from login page
+  if (user && pathname === '/admin/login') {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 
-  // If already logged in, redirect away from login page
-  if (pathname === '/admin/login' && user) {
-    const dashUrl = request.nextUrl.clone()
-    dashUrl.pathname = '/admin/dashboard'
-    return NextResponse.redirect(dashUrl)
+  // Not logged in → redirect to login (except login page itself)
+  if (!user && pathname !== '/admin/login') {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: [
-    '/admin/:path*',
-  ],
+  matcher: ['/admin/:path*'],
 }
