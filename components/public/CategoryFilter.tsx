@@ -25,7 +25,7 @@ export default function CategoryFilter({
           'whitespace-nowrap px-5 py-2 text-xs tracking-widest uppercase font-medium transition-colors',
           activeSlug === null
             ? 'text-[#c9a84c] active'
-            : 'text-white/60 hover:text-white'
+            : 'text-muted hover:text-foreground'
         )}
       >
         All
@@ -42,7 +42,7 @@ export default function CategoryFilter({
             'whitespace-nowrap px-5 py-2 text-xs tracking-widest uppercase font-medium transition-colors',
             activeSlug === category.slug
               ? 'text-[#c9a84c] active'
-              : 'text-white/60 hover:text-white'
+              : 'text-muted hover:text-foreground'
           )}
         >
           {category.name}

@@ -38,7 +38,7 @@ export default function AdminSidebar() {
               'admin-nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium',
               pathname.startsWith(item.href)
                 ? 'active bg-gold/10 text-gold border-l-2 border-gold'
-                : 'text-muted hover:bg-white/5 hover:text-white border-l-2 border-transparent'
+                : 'text-muted hover:bg-foreground/5 hover:text-foreground border-l-2 border-transparent'
             )}
           >
             <span className="text-lg">{item.icon}</span>

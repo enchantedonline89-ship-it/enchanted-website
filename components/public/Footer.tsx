@@ -2,13 +2,13 @@ import { WHATSAPP_FLOAT_URL } from '@/lib/whatsapp'
 
 export default function Footer() {
   return (
-    <footer className="bg-[#111111] border-t border-[#2a2a2a]">
+    <footer className="bg-surface border-t border-border">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Brand */}
           <div>
             <img src="/logo.png" alt="Enchanted Style" className="h-12 w-auto object-contain mb-4" />
-            <p className="text-white/40 text-sm leading-relaxed max-w-xs">
+            <p className="text-muted text-sm leading-relaxed max-w-xs">
               Curated women&apos;s fashion from Lebanon. Where glamour meets edge.
             </p>
             <div className="flex gap-4 mt-6">
@@ -18,7 +18,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-hover
-                className="w-10 h-10 rounded-full border border-[#2a2a2a] flex items-center justify-center text-white/40 hover:text-[#c9a84c] hover:border-[#c9a84c] transition-colors"
+                className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted hover:text-[#c9a84c] hover:border-[#c9a84c] transition-colors"
                 aria-label="Instagram"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -32,7 +32,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-hover
-                className="w-10 h-10 rounded-full border border-[#2a2a2a] flex items-center justify-center text-white/40 hover:text-[#25D366] hover:border-[#25D366] transition-colors"
+                className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted hover:text-[#25D366] hover:border-[#25D366] transition-colors"
                 aria-label="WhatsApp"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -44,7 +44,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display text-white text-lg mb-5">Collections</h4>
+            <h4 className="font-display text-foreground text-lg mb-5">Collections</h4>
             <ul className="space-y-3">
               {[
                 'Heels & Stilettos',
@@ -58,7 +58,7 @@ export default function Footer() {
                   <a
                     href="#catalog"
                     data-hover
-                    className="text-white/40 hover:text-[#c9a84c] text-sm transition-colors"
+                    className="text-muted hover:text-[#c9a84c] text-sm transition-colors"
                   >
                     {cat}
                   </a>
@@ -69,9 +69,9 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-display text-white text-lg mb-5">Get in Touch</h4>
+            <h4 className="font-display text-foreground text-lg mb-5">Get in Touch</h4>
             <div className="space-y-4">
-              <p className="text-white/40 text-sm">
+              <p className="text-muted text-sm">
                 Have a question? We&apos;re just a message away.
               </p>
               <a
@@ -86,16 +86,16 @@ export default function Footer() {
                 </svg>
                 Chat on WhatsApp
               </a>
-              <p className="text-white/30 text-xs">Lebanon</p>
+              <p className="text-subtle text-xs">Lebanon</p>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-[#2a2a2a] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-white/30 text-xs">
+        <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-subtle text-xs">
             &copy; {new Date().getFullYear()} Enchanted Style. All rights reserved.
           </p>
-          <p className="text-white/20 text-xs">Lebanon&apos;s Premier Women&apos;s Fashion</p>
+          <p className="text-subtle text-xs">Lebanon&apos;s Premier Women&apos;s Fashion</p>
         </div>
       </div>
     </footer>

@@ -61,7 +61,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     <div style={{ perspective: '1000px' }}>
       <div
         ref={cardRef}
-        className="product-card-inner rounded-xl overflow-hidden bg-[#161616] border border-[#2a2a2a] group cursor-pointer transition-transform duration-200"
+        className="product-card-inner rounded-xl overflow-hidden bg-card border border-border group cursor-pointer transition-transform duration-200"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
@@ -80,8 +80,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="absolute inset-0 bg-[#1a1a1a] flex items-center justify-center">
-              <svg className="w-12 h-12 text-white/10" viewBox="0 0 24 24" fill="currentColor">
+            <div className="absolute inset-0 bg-surface flex items-center justify-center">
+              <svg className="w-12 h-12 text-subtle" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
               </svg>
             </div>
@@ -99,12 +99,12 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Content section */}
         <div className="p-4">
           {product.category?.name && (
-            <p className="text-xs text-white/40 uppercase tracking-widest mb-1">
+            <p className="text-xs text-muted uppercase tracking-widest mb-1">
               {product.category.name}
             </p>
           )}
 
-          <h3 className="font-display text-white text-lg leading-tight mb-2">
+          <h3 className="font-display text-foreground text-lg leading-tight mb-2">
             {product.name}
           </h3>
 
@@ -123,7 +123,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                   className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide border transition-all duration-150 ${
                     selectedSize === size
                       ? 'bg-[#c9a84c] border-[#c9a84c] text-black font-semibold'
-                      : 'text-white/50 border-white/20 hover:border-[#c9a84c] hover:text-[#c9a84c]'
+                      : 'text-muted border-border hover:border-[#c9a84c] hover:text-[#c9a84c]'
                   }`}
                 >
                   {size}
@@ -141,7 +141,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               added
                 ? 'bg-green-600 text-white'
                 : hasSizes && !selectedSize
-                ? 'bg-[#2a2a2a] text-white/30 cursor-not-allowed'
+                ? 'bg-border text-subtle cursor-not-allowed'
                 : 'bg-[#c9a84c] hover:bg-[#f0d060] text-black'
             }`}
           >

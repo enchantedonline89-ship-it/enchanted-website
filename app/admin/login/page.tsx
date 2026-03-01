@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
         {/* Logo */}
         <div className="text-center mb-10">
           <img src="/logo.png" alt="Enchanted Style" className="h-12 w-auto object-contain mx-auto mb-4" />
-          <h1 className="font-display text-3xl text-white">Admin Access</h1>
+          <h1 className="font-display text-3xl text-foreground">Admin Access</h1>
           <p className="text-muted text-sm mt-2">Sign in to manage your catalog</p>
         </div>
 
@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
+                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
                 placeholder="admin@example.com"
               />
             </div>
@@ -68,7 +68,7 @@ export default function AdminLoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
+                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
                 placeholder="••••••••"
               />
             </div>

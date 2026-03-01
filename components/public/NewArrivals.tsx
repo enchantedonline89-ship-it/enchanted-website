@@ -17,7 +17,7 @@ export default function NewArrivals({ products }: NewArrivalsProps) {
         <p className="text-[#c9a84c] text-xs tracking-widest uppercase mb-3">
           Just Dropped
         </p>
-        <h2 className="font-display text-4xl lg:text-5xl text-white mb-4">
+        <h2 className="font-display text-4xl lg:text-5xl text-foreground mb-4">
           New Arrivals
         </h2>
         <div className="section-divider" />

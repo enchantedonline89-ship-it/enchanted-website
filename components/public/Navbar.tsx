@@ -55,7 +55,7 @@ export default function Navbar() {
                 key={href}
                 href={href}
                 data-hover
-                className="text-sm tracking-widest uppercase text-white/70 hover:text-[#c9a84c] transition-colors duration-200"
+                className="text-sm tracking-widest uppercase text-muted hover:text-[#c9a84c] transition-colors duration-200"
               >
                 {label}
               </a>
@@ -81,7 +81,7 @@ export default function Navbar() {
             {/* Cart icon */}
             <button
               onClick={openCart}
-              className="relative text-white/70 hover:text-[#c9a84c] transition-colors p-1"
+              className="relative text-muted hover:text-[#c9a84c] transition-colors p-1"
               aria-label={`Open cart (${totalItems} items)`}
               data-hover
             >
@@ -97,7 +97,7 @@ export default function Navbar() {
 
             {/* Mobile hamburger */}
             <button
-              className="md:hidden text-white/70 hover:text-white transition-colors p-1"
+              className="md:hidden text-muted hover:text-foreground transition-colors p-1"
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen(prev => !prev)}
@@ -119,7 +119,7 @@ export default function Navbar() {
 
       {/* Mobile menu backdrop */}
       <div
-        className={`fixed inset-0 z-[55] bg-black/60 transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-0 z-[55] bg-black/30 transition-opacity duration-300 md:hidden ${
           menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={closeMenu}
@@ -128,7 +128,7 @@ export default function Navbar() {
 
       {/* Mobile menu drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 z-[56] bg-[#111111] border-l border-[#2a2a2a] flex flex-col pt-20 pb-8 px-6 transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed top-0 right-0 h-full w-72 z-[56] bg-surface border-l border-border flex flex-col pt-20 pb-8 px-6 transition-transform duration-300 ease-out md:hidden ${
           menuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
@@ -142,7 +142,7 @@ export default function Navbar() {
               href={href}
               onClick={closeMenu}
               data-hover
-              className="text-white/70 hover:text-[#c9a84c] text-sm uppercase tracking-[0.3em] transition-colors duration-200 font-medium"
+              className="text-muted hover:text-[#c9a84c] text-sm uppercase tracking-[0.3em] transition-colors duration-200 font-medium"
             >
               {label}
             </a>

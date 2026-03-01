@@ -60,7 +60,7 @@ export default async function HomePage() {
         {/* About section */}
         <section id="about" className="py-24 px-4 max-w-4xl mx-auto text-center">
           <p className="text-gold text-xs tracking-[0.4em] uppercase mb-4">Our Story</p>
-          <h2 className="font-display text-4xl lg:text-5xl text-white mb-6 leading-tight">
+          <h2 className="font-display text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
             Fashion is not just clothing.<br />
             <span className="text-gold-gradient italic">It&apos;s a statement.</span>
           </h2>

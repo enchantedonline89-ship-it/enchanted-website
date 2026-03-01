@@ -2,25 +2,24 @@
 
 /* ============================================================
    ENCHANTED STYLE — Global Theme
-   Dark obsidian glamour palette
+   Light luxury cream palette
    ============================================================ */
 
 @theme inline {
-  /* Brand Colors */
-  --color-obsidian:    #0a0a0a;
-  --color-surface:     #111111;
-  --color-card:        #161616;
-  --color-border:      #2a2a2a;
+  /* Light luxury palette */
+  --color-background:  #faf9f7;
+  --color-surface:     #f5f2ee;
+  --color-card:        #ffffff;
+  --color-border:      #e8e2da;
+  --color-foreground:  #1a1a1a;
+  --color-muted:       #6b6b6b;
+  --color-subtle:      #aaaaaa;
+  --color-obsidian:    #faf9f7;   /* remapped so bg-obsidian = light bg */
+  /* Gold palette unchanged */
   --color-gold:        #c9a84c;
   --color-gold-light:  #f0d060;
   --color-gold-muted:  #9a7a35;
   --color-white:       #ffffff;
-  --color-muted:       #888888;
-  --color-subtle:      #555555;
-
-  /* Semantic */
-  --color-background:  var(--color-obsidian);
-  --color-foreground:  var(--color-white);
 
   /* Fonts */
   --font-display: var(--font-playfair);
@@ -40,8 +39,8 @@ html {
 }
 
 body {
-  background-color: #0a0a0a;
-  color: #ffffff;
+  background-color: #faf9f7;
+  color: #1a1a1a;
   font-family: var(--font-dm-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -54,7 +53,7 @@ body {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #f5f2ee;
 }
 ::-webkit-scrollbar-thumb {
   background: #c9a84c44;
@@ -94,7 +93,6 @@ body {
   z-index: 9999;
   transform: translate(-50%, -50%);
   transition: transform 0.05s ease, width 0.2s ease, height 0.2s ease, background 0.2s ease;
-  mix-blend-mode: difference;
 }
 
 .cursor-ring {
@@ -149,8 +147,8 @@ body {
 .nav-glass {
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background-color: rgba(10, 10, 10, 0.75);
-  border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+  background-color: rgba(250, 249, 247, 0.85);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
 }
 
 /* ============================================================
@@ -274,7 +272,7 @@ body {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #161616 25%, #222222 50%, #161616 75%);
+  background: linear-gradient(90deg, #f5f2ee 25%, #e8e2da 50%, #f5f2ee 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }

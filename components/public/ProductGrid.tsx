@@ -80,7 +80,7 @@ export default function ProductGrid({ products, categories }: ProductGridProps) 
         <p className="text-[#c9a84c] text-xs tracking-widest uppercase mb-3">
           Our Collection
         </p>
-        <h2 className="font-display text-4xl lg:text-5xl text-white mb-4">
+        <h2 className="font-display text-4xl lg:text-5xl text-foreground mb-4">
           Shop the Edit
         </h2>
         <div className="section-divider" />
@@ -103,7 +103,7 @@ export default function ProductGrid({ products, categories }: ProductGridProps) 
           ))}
         </div>
       ) : (
-        <p className="text-center text-white/40 py-20">
+        <p className="text-center text-muted py-20">
           No products in this category yet.
         </p>
       )}
