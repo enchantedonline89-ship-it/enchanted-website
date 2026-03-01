@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 
 interface ImageLightboxProps {
@@ -40,8 +41,10 @@ export default function ImageLightbox({
     return () => { document.body.style.overflow = '' }
   }, [])
 
-  return (
+  return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
@@ -67,8 +70,8 @@ export default function ImageLightbox({
               <button
                 key={i}
                 onClick={() => onNavigate(i)}
-                className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                  i === currentIndex ? 'bg-[#c9a84c] w-4' : 'bg-white/30 hover:bg-white/60'
+                className={`h-2 rounded-full transition-all duration-200 ${
+                  i === currentIndex ? 'bg-[#c9a84c] w-4' : 'bg-white/30 hover:bg-white/60 w-2'
                 }`}
                 aria-label={`Go to image ${i + 1}`}
               />
@@ -109,6 +112,7 @@ export default function ImageLightbox({
       >
         ×
       </button>
-    </div>
+    </div>,
+    document.body
   )
 }
