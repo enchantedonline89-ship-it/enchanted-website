@@ -27,14 +27,14 @@ export default function ImageLightbox({
     onNavigate(currentIndex === images.length - 1 ? 0 : currentIndex + 1)
   }, [currentIndex, images.length, onNavigate])
 
-  // Focus the dialog on mount so keyboard users land inside the overlay immediately
+  // Focus the dialog on mount — rAF ensures the portal has painted before focus attempt
   useEffect(() => {
-    dialogRef.current?.focus()
+    const id = requestAnimationFrame(() => { dialogRef.current?.focus() })
+    return () => cancelAnimationFrame(id)
   }, [])
 
-  // Lock body scroll
+  // Lock body scroll (useEffect never runs on the server; document access is safe here)
   useEffect(() => {
-    if (typeof document === 'undefined') return
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
