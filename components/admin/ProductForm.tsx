@@ -117,7 +117,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
     }
   }
 
-  const inputClass = "w-full bg-card border border-border rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted transition-colors"
+  const inputClass = "w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted transition-colors"
   const labelClass = "block text-sm text-muted mb-1.5"
 
   return (
@@ -168,7 +168,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 form.sizes.includes(size)
                   ? 'bg-gold/20 border-gold text-gold'
-                  : 'bg-card border-border text-muted hover:border-white/30 hover:text-white'
+                  : 'bg-card border-border text-muted hover:border-foreground/30 hover:text-foreground'
               }`}
             >
               {size}
@@ -206,14 +206,14 @@ export default function ProductForm({ product, categories, mode }: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="bg-gold hover:bg-gold-light text-obsidian text-sm font-semibold px-8 py-3 rounded-lg transition-all duration-200 disabled:opacity-50"
+          className="bg-gold hover:bg-gold-light text-black text-sm font-semibold px-8 py-3 rounded-lg transition-all duration-200 disabled:opacity-50"
         >
           {saving ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="bg-white/5 hover:bg-white/10 text-muted hover:text-white text-sm px-6 py-3 rounded-lg transition-colors"
+          className="bg-foreground/5 hover:bg-foreground/10 text-muted hover:text-foreground text-sm px-6 py-3 rounded-lg transition-colors"
         >
           Cancel
         </button>

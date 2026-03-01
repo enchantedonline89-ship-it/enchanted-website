@@ -88,7 +88,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
           onChange(url)
         }}
         placeholder="Paste HTTPS image URL or upload below"
-        className="w-full bg-card border border-border rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
+        className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
       />
 
       {/* Upload button */}
@@ -97,7 +97,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-border text-muted hover:text-white text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 bg-foreground/5 hover:bg-foreground/10 border border-border text-muted hover:text-foreground text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
         >
           {uploading ? (
             <><span className="animate-spin">↻</span> Uploading...</>

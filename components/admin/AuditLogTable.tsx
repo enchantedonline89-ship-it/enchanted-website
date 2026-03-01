@@ -29,13 +29,13 @@ export default function AuditLogTable({ logs }: Props) {
         </thead>
         <tbody className="divide-y divide-border">
           {logs.map(log => (
-            <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+            <tr key={log.id} className="hover:bg-foreground/[0.02] transition-colors">
               <td className="py-3 pr-4">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${actionColors[log.action]}`}>
                   {log.action}
                 </span>
               </td>
-              <td className="py-3 pr-4 text-white font-medium">{log.entity_name || '—'}</td>
+              <td className="py-3 pr-4 text-foreground font-medium">{log.entity_name || '—'}</td>
               <td className="py-3 pr-4 text-muted capitalize">{log.entity_type}</td>
               <td className="py-3 pr-4 text-muted text-xs truncate max-w-[160px]">{log.admin_email}</td>
               <td className="py-3 text-muted text-xs">{formatDate(log.created_at)}</td>

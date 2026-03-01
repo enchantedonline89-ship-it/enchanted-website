@@ -17,7 +17,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <div className="p-8">
       <div className="mb-8">
         <a href="/admin/products" className="text-muted hover:text-gold text-sm transition-colors">← Back to Products</a>
-        <h1 className="font-display text-3xl text-white mt-3">Edit Product</h1>
+        <h1 className="font-display text-3xl text-foreground mt-3">Edit Product</h1>
         <p className="text-muted text-sm mt-1">{product.name}</p>
       </div>
       <ProductForm product={product} categories={categories ?? []} mode="edit" />

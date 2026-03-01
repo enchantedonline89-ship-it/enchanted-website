@@ -33,7 +33,7 @@ export default function DeleteProductButton({ id, name }: { id: string; name: st
         <button onClick={handleDelete} disabled={deleting} className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded bg-red-500/10 transition-colors disabled:opacity-50">
           {deleting ? '...' : 'Yes'}
         </button>
-        <button onClick={() => setConfirm(false)} className="text-muted text-xs px-2 py-1 rounded hover:text-white transition-colors">No</button>
+        <button onClick={() => setConfirm(false)} className="text-muted text-xs px-2 py-1 rounded hover:text-foreground transition-colors">No</button>
       </div>
     )
   }

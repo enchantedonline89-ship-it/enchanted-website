@@ -13,10 +13,10 @@ export default async function CategoriesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl text-white">Categories</h1>
+          <h1 className="font-display text-3xl text-foreground">Categories</h1>
           <p className="text-muted text-sm mt-1">{categories?.length ?? 0} categories</p>
         </div>
-        <a href="/admin/categories/new" className="bg-gold hover:bg-gold-light text-obsidian text-sm font-semibold px-5 py-2.5 rounded-lg transition-all duration-200">
+        <a href="/admin/categories/new" className="bg-gold hover:bg-gold-light text-black text-sm font-semibold px-5 py-2.5 rounded-lg transition-all duration-200">
           + Add Category
         </a>
       </div>
@@ -29,8 +29,8 @@ export default async function CategoriesPage() {
             )}
             <div className="p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="text-white font-medium">{c.name}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded ${c.is_active ? 'text-green-400 bg-green-400/10' : 'text-muted bg-white/5'}`}>
+                <h3 className="text-foreground font-medium">{c.name}</h3>
+                <span className={`text-xs px-2 py-0.5 rounded ${c.is_active ? 'text-green-400 bg-green-400/10' : 'text-muted bg-foreground/5'}`}>
                   {c.is_active ? 'Active' : 'Hidden'}
                 </span>
               </div>
