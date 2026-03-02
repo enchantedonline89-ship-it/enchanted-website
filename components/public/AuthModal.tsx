@@ -61,7 +61,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     if (err) {
       setError(err)
     } else if (mode === 'signin' && email.toLowerCase() === 'enchantedonline89@gmail.com') {
-      window.location.href = '/admin'
+      window.location.href = '/admin/dashboard'
     } else {
       onClose()
     }

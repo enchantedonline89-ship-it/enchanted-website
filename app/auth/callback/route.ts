@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.email?.toLowerCase() === 'enchantedonline89@gmail.com') {
-        return NextResponse.redirect(`${origin}/admin`)
+        return NextResponse.redirect(`${origin}/admin/dashboard`)
       }
       return NextResponse.redirect(`${origin}${next}`)
     }
