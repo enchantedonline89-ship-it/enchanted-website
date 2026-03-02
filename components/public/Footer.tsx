@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { WHATSAPP_FLOAT_URL } from '@/lib/whatsapp'
 import Logo from '@/components/public/Logo'
 
@@ -5,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="bg-surface border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div>
             <Logo className="h-10 w-auto mb-4" />
@@ -63,6 +64,26 @@ export default function Footer() {
                   >
                     {cat}
                   </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Help */}
+          <div>
+            <h4 className="font-display text-foreground text-lg mb-5">Help</h4>
+            <ul className="space-y-3">
+              {[
+                { label: 'Shipping & Delivery', href: '/shipping' },
+                { label: 'Returns & Cancellations', href: '/returns' },
+                { label: 'Terms of Service', href: '/terms' },
+                { label: 'Contact Us', href: '/contact' },
+                { label: 'Size Guide', href: '/size-guide' },
+              ].map(({ label, href }) => (
+                <li key={href}>
+                  <Link href={href} className="text-muted hover:text-[#c9a84c] text-sm transition-colors">
+                    {label}
+                  </Link>
                 </li>
               ))}
             </ul>

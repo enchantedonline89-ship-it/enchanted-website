@@ -26,6 +26,14 @@ export const metadata: Metadata = {
     description: "Curated women's fashion from Lebanon. Where glamour meets edge.",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/logo.svg", // TODO: replace with /og-image.png (1200×630 PNG) before launch
+        width: 1200,
+        height: 630,
+        alt: "Enchanted Style — Lebanese Women's Fashion",
+      },
+    ],
   },
   icons: {
     icon: "/favicon.ico",

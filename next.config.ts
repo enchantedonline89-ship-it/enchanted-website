@@ -48,7 +48,7 @@ const securityHeaders = [
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co https://supabase.co",
       // connect-src covers Supabase REST + Auth + Realtime WebSocket
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://wa.me",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://wa.me https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
       "media-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",

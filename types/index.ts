@@ -70,7 +70,6 @@ export interface CategoryFormData {
 
 // Order types
 export interface OrderItem {
-  product_id: string
   name: string
   size: string | null
   qty: number

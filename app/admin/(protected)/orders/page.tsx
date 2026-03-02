@@ -16,7 +16,7 @@ const mockOrders: Order[] = [
     area: 'beirut',
     delivery_fee: 3,
     order_notes: null,
-    items: [{ product_id: 'p-1', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 }],
+    items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 }],
     subtotal: 89.99,
     total: 92.99,
     status: 'pending',
