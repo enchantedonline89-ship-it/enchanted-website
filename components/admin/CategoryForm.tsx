@@ -63,7 +63,7 @@ export default function CategoryForm({ category, mode }: Props) {
       } else if (msg.includes('duplicate key') || msg.includes('unique')) {
         setError('A category with this name or slug already exists.')
       } else {
-        setError('Failed to save category. Please try again.')
+        setError(`Save failed: ${msg}`)
       }
     } finally {
       setSaving(false)

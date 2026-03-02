@@ -110,7 +110,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       } else if (msg.includes('duplicate key') || msg.includes('unique')) {
         setError('A product with this name or slug already exists.')
       } else {
-        setError('Failed to save product. Please try again.')
+        setError(`Save failed: ${msg}`)
       }
     } finally {
       setSaving(false)

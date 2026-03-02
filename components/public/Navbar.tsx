@@ -92,13 +92,18 @@ export default function Navbar() {
                   )}
                 </button>
                 {/* Dropdown */}
-                <div className="absolute right-0 top-10 w-44 bg-card border border-border rounded-xl shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50">
-                  <a href="/orders" className="block px-4 py-3 text-sm text-foreground hover:text-gold hover:bg-foreground/5 rounded-t-xl transition-colors">
+                <div className="absolute right-0 top-10 w-44 bg-card border border-border rounded-xl shadow-lg overflow-hidden opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150 z-50">
+                  {user.email?.toLowerCase() === 'enchantedonline89@gmail.com' && (
+                    <a href="/admin" className="block px-4 py-3 text-sm text-gold hover:bg-gold/5 transition-colors border-b border-border">
+                      Admin Panel
+                    </a>
+                  )}
+                  <a href="/orders" className="block px-4 py-3 text-sm text-foreground hover:text-gold hover:bg-foreground/5 transition-colors">
                     My Orders
                   </a>
                   <button
                     onClick={signOut}
-                    className="w-full text-left px-4 py-3 text-sm text-muted hover:text-red-500 hover:bg-red-50 rounded-b-xl transition-colors border-t border-border"
+                    className="w-full text-left px-4 py-3 text-sm text-muted hover:text-red-500 hover:bg-red-50 transition-colors border-t border-border"
                   >
                     Sign Out
                   </button>

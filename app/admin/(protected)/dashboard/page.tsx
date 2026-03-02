@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const [
     { count: totalProducts },
@@ -42,7 +43,7 @@ export default async function DashboardPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl text-foreground">Dashboard</h1>
-        <p className="text-muted text-sm mt-1">Welcome back. Here&apos;s your catalog overview.</p>
+        <p className="text-muted text-sm mt-1">Signed in as <span className="text-foreground">{user?.email ?? 'unknown'}</span></p>
       </div>
 
       {/* Stats */}
