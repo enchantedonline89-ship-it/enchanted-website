@@ -162,9 +162,13 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
 // ─── POST /api/orders ─────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  // Rate limit by IP
+  // Rate limit by IP.
+  // x-real-ip is set by Vercel's edge and cannot be spoofed by the client.
+  // Fall back to the LAST value of x-forwarded-for (appended by Vercel's proxy),
+  // not the first (which is client-supplied and trivially spoofable).
+  const realIp = request.headers.get('x-real-ip')
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown'
+  const ip = realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
 
   if (isRateLimited(ip)) {
     return NextResponse.json(

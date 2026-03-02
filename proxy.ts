@@ -2,8 +2,9 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // The only email allowed to access /admin/* routes.
+// Set ADMIN_EMAIL in .env.local and Vercel environment variables.
 // This is a defence-in-depth check at the edge — the API routes also verify this.
-const ADMIN_EMAIL = 'Enchantedonline89@gmail.com'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export async function proxy(request: NextRequest) {
   // Skip in mock mode — no real Supabase to auth against

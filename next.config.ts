@@ -1,5 +1,7 @@
 import type { NextConfig } from "next"
 
+const isDev = process.env.NODE_ENV === 'development'
+
 // ─── Security Headers ─────────────────────────────────────────────────────────
 // Applied to every response. Adjust the CSP connect-src if the Supabase project
 // URL changes (add the real URL once the client configures their project).
@@ -41,9 +43,10 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      // unsafe-inline required by Tailwind v4 CSS-in-JS approach;
-      // unsafe-eval required by Three.js/GSAP in dev — tighten for production if possible
+      // unsafe-eval only in dev (required by GSAP/Next.js hot reload).
+      // Removed in production to prevent eval-based XSS exploitation.
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+      // unsafe-inline required by Tailwind v4 CSS-in-JS runtime approach
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co https://supabase.co",

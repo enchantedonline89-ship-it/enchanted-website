@@ -91,48 +91,49 @@ ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "categories_public_read" ON categories
   FOR SELECT USING (is_active = TRUE);
 
--- Authenticated (admin) can read ALL rows (including inactive)
+-- Any authenticated user can read ALL categories (including inactive)
+-- so the admin panel can show inactive rows in dropdowns/lists
 CREATE POLICY "categories_admin_select" ON categories
   FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Authenticated admin can INSERT/UPDATE/DELETE
+-- Only the admin email can INSERT/UPDATE/DELETE categories
 CREATE POLICY "categories_admin_insert" ON categories
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 CREATE POLICY "categories_admin_update" ON categories
   FOR UPDATE
-  USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  USING     (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
+  WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 CREATE POLICY "categories_admin_delete" ON categories
-  FOR DELETE USING (auth.uid() IS NOT NULL);
+  FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Products: anon can read only active rows
 CREATE POLICY "products_public_read" ON products
   FOR SELECT USING (is_active = TRUE);
 
--- Authenticated (admin) can read ALL rows
+-- Any authenticated user can read ALL products (including inactive)
 CREATE POLICY "products_admin_select" ON products
   FOR SELECT USING (auth.uid() IS NOT NULL);
 
--- Authenticated admin can INSERT/UPDATE/DELETE
+-- Only the admin email can INSERT/UPDATE/DELETE products
 CREATE POLICY "products_admin_insert" ON products
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 CREATE POLICY "products_admin_update" ON products
   FOR UPDATE
-  USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  USING     (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
+  WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 CREATE POLICY "products_admin_delete" ON products
-  FOR DELETE USING (auth.uid() IS NOT NULL);
+  FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
--- Admin logs: only authenticated admin can read/write
+-- Admin logs: only the admin email can read or write audit entries
 CREATE POLICY "logs_admin_select" ON admin_logs
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 CREATE POLICY "logs_admin_insert" ON admin_logs
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- ============================================================
 -- STORAGE RLS — Run AFTER creating the product-images bucket

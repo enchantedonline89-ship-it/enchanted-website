@@ -3,7 +3,8 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 // The only email allowed to trigger cache revalidation.
-const ADMIN_EMAIL = 'Enchantedonline89@gmail.com'
+// Set ADMIN_EMAIL in .env.local and Vercel environment variables.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 /**
  * POST /api/revalidate

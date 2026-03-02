@@ -5,8 +5,8 @@ import { isSupabaseMockMode } from '@/lib/mock-data'
 const VALID_STATUSES = ['pending', 'confirmed', 'delivered', 'cancelled']
 
 // The only email allowed to perform admin operations.
-// This acts as a second layer on top of Supabase session auth.
-const ADMIN_EMAIL = 'Enchantedonline89@gmail.com'
+// Set ADMIN_EMAIL in .env.local and Vercel environment variables.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export async function PATCH(
   request: Request,
