@@ -3,7 +3,6 @@ import Hero from "@/components/public/Hero"
 import NewArrivals from "@/components/public/NewArrivals"
 import ProductGrid from "@/components/public/ProductGrid"
 import Footer from "@/components/public/Footer"
-import CustomCursor from "@/components/public/CustomCursor"
 import WhatsAppFloat from "@/components/public/WhatsAppFloat"
 import CartDrawer from "@/components/public/CartDrawer"
 import { Product, Category } from "@/types"
@@ -49,7 +48,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <CustomCursor />
       <Navbar />
 
       <main>

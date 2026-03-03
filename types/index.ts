@@ -102,3 +102,24 @@ export interface DashboardStats {
   total_categories: number
   total_logs: number
 }
+
+// Order analytics — from the order_analytics materialized view
+export interface OrderAnalytics {
+  id: number
+  total_orders: number
+  total_revenue: number
+  avg_order_value: number
+  orders_this_month: number
+  revenue_this_month: number
+  orders_this_week: number
+  revenue_this_week: number
+  pending_count: number
+  confirmed_count: number
+  delivered_count: number
+  cancelled_count: number
+  beirut_count: number
+  outside_count: number
+  top_products: Array<{ name: string; qty: number; revenue: number }> | null
+  top_cities: Array<{ city: string; count: number }> | null
+  daily_volume: Array<{ date: string; count: number }> | null
+}

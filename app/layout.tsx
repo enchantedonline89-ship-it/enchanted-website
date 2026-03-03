@@ -3,6 +3,7 @@ import { Playfair_Display, DM_Sans } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/lib/cart-context"
 import { AuthProvider } from "@/lib/auth-context"
+import CustomCursor from "@/components/public/CustomCursor"
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/logo.svg", // TODO: replace with /og-image.png (1200×630 PNG) before launch
+        url: "/logo.svg",
         width: 1200,
         height: 630,
         alt: "Enchanted Style — Lebanese Women's Fashion",
@@ -50,6 +51,7 @@ export default function RootLayout({
       <body className={`${playfair.variable} ${dmSans.variable} antialiased`}>
         <AuthProvider>
           <CartProvider>
+            <CustomCursor />
             {children}
           </CartProvider>
         </AuthProvider>
