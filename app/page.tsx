@@ -1,5 +1,6 @@
 import Navbar from "@/components/public/Navbar"
 import Hero from "@/components/public/Hero"
+import TrustBar from "@/components/public/TrustBar"
 import NewArrivals from "@/components/public/NewArrivals"
 import ProductGrid from "@/components/public/ProductGrid"
 import Footer from "@/components/public/Footer"
@@ -52,6 +53,7 @@ export default async function HomePage() {
 
       <main>
         <Hero />
+        <TrustBar />
         <NewArrivals products={newArrivals} />
         <ProductGrid products={products} categories={categories} />
 

@@ -478,6 +478,9 @@ export default function CartDrawer() {
 
         {/* Footer buttons */}
         <div className="px-5 py-4 border-t border-border space-y-2">
+          <p className="text-[10px] text-muted text-center pb-1">
+            Free returns within 14 days · Cash on Delivery
+          </p>
           <button
             onClick={handlePlaceOrder}
             disabled={!canSubmit}
@@ -581,9 +584,28 @@ export default function CartDrawer() {
           </div>
         </div>
 
-        <p className="text-muted text-xs mb-6 max-w-xs leading-relaxed">
-          The owner will contact you on WhatsApp to confirm delivery. Payment is Cash on Delivery.
-        </p>
+        {/* What happens next — 4-step timeline */}
+        <div className="w-full mb-5 text-left">
+          <p className="text-[10px] text-muted uppercase tracking-wider mb-3 font-medium">What happens next</p>
+          <div className="space-y-3">
+            {([
+              { n: '✓', label: 'Order Received', desc: 'Your order is saved in our system', done: true },
+              { n: '2', label: 'WhatsApp Confirmation', desc: 'We will message you to confirm details', done: false },
+              { n: '3', label: 'Order Prepared', desc: 'We package your items with care', done: false },
+              { n: '4', label: 'Cash on Delivery', desc: 'Pay when your order arrives at your door', done: false },
+            ] as const).map(({ n, label, desc, done }) => (
+              <div key={label} className="flex items-start gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold leading-none ${done ? 'bg-gold text-black' : 'bg-surface border border-border text-muted'}`}>
+                  {n}
+                </div>
+                <div>
+                  <p className={`text-xs font-medium leading-tight ${done ? 'text-foreground' : 'text-muted'}`}>{label}</p>
+                  <p className="text-[10px] text-muted/70 leading-tight mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Customer confirmation button */}
         <a

@@ -113,6 +113,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             {formatPrice(product.price)}
           </p>
 
+          {/* COD badge */}
+          <span className="inline-flex items-center gap-1 text-[10px] text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 mt-1.5">
+            <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+            Cash on Delivery
+          </span>
+
           {/* Size picker — min 44px touch target on mobile via padding */}
           {hasSizes && (
             <div className="flex flex-wrap gap-1.5 mt-3">
@@ -162,6 +171,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               </>
             )}
           </button>
+
+          <p className="text-[10px] text-muted text-center mt-2">Free returns within 14 days</p>
         </div>
       </div>
 
