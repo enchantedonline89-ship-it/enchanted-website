@@ -672,7 +672,10 @@ export default function CartDrawer() {
             {drawerState === 'success' && 'Confirmed'}
           </h2>
           <button
-            onClick={closeCart}
+            onClick={() => {
+              if (drawerState === 'success') clearCart()
+              closeCart()
+            }}
             className="text-muted hover:text-foreground transition-colors text-2xl leading-none"
             aria-label="Close cart"
             data-hover

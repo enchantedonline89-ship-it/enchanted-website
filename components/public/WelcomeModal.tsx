@@ -47,7 +47,7 @@ export default function WelcomeModal() {
   // Listen for the enchanted:welcome custom event
   useEffect(() => {
     const handleWelcome = () => {
-      if (localStorage.getItem('enchanted_welcome_seen')) return
+      try { if (localStorage.getItem('enchanted_welcome_seen')) return } catch { /* iOS private browsing */ }
       setOpen(true)
       // Slight delay so the card entrance animation fires after mount
       requestAnimationFrame(() => requestAnimationFrame(() => setCardVisible(true)))
@@ -57,7 +57,7 @@ export default function WelcomeModal() {
   }, [])
 
   const handleClose = useCallback(() => {
-    localStorage.setItem('enchanted_welcome_seen', 'true')
+    try { localStorage.setItem('enchanted_welcome_seen', 'true') } catch { /* iOS private browsing */ }
     setCardVisible(false)
     setTimeout(() => {
       setOpen(false)

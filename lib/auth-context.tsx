@@ -46,7 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null)
 
       if (event === 'SIGNED_IN') {
-        const isAdmin = session?.user?.email?.toLowerCase() === 'enchantedonline89@gmail.com'
+        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()
+        const isAdmin = adminEmail !== undefined &&
+          session?.user?.email?.toLowerCase() === adminEmail
         const isAdminPath = typeof window !== 'undefined' &&
           window.location.pathname.startsWith('/admin')
         if (!isAdmin && !isAdminPath) {
