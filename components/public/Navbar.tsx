@@ -6,6 +6,7 @@ import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/lib/auth-context'
 import { WHATSAPP_FLOAT_URL } from '@/lib/whatsapp'
 import Logo from '@/components/public/Logo'
+import DeleteAccountModal from '@/components/public/DeleteAccountModal'
 
 const NAV_LINKS = [
   { label: 'Collections', href: '#catalog' },
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const { totalItems, openCart } = useCart()
   const { user, signOut } = useAuth()
 
@@ -101,6 +103,12 @@ export default function Navbar() {
                   <a href="/orders" className="block px-4 py-3 text-sm text-foreground hover:text-gold hover:bg-foreground/5 transition-colors">
                     My Orders
                   </a>
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-border"
+                  >
+                    Delete Account
+                  </button>
                   <button
                     onClick={signOut}
                     className="w-full text-left px-4 py-3 text-sm text-muted hover:text-red-500 hover:bg-red-50 transition-colors border-t border-border"
@@ -218,6 +226,11 @@ export default function Navbar() {
           Chat on WhatsApp
         </a>
       </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <DeleteAccountModal onClose={() => setShowDeleteModal(false)} />
+      )}
     </>
   )
 }
