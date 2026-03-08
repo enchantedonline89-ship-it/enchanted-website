@@ -4,6 +4,7 @@ import "./globals.css"
 import { CartProvider } from "@/lib/cart-context"
 import { AuthProvider } from "@/lib/auth-context"
 import CustomCursor from "@/components/public/CustomCursor"
+import WelcomeModal from "@/components/public/WelcomeModal"
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -52,6 +53,7 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <CustomCursor />
+            <WelcomeModal />
             {children}
           </CartProvider>
         </AuthProvider>

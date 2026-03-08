@@ -42,8 +42,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+
+      if (event === 'SIGNED_IN') {
+        const isAdmin = session?.user?.email?.toLowerCase() === 'enchantedonline89@gmail.com'
+        const isAdminPath = typeof window !== 'undefined' &&
+          window.location.pathname.startsWith('/admin')
+        if (!isAdmin && !isAdminPath) {
+          window.dispatchEvent(new CustomEvent('enchanted:welcome'))
+        }
+      }
     })
 
     return () => subscription.unsubscribe()
