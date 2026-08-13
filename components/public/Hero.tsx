@@ -3,40 +3,41 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 
 /**
- * Type on the left, the gown on the right, gold dust drifting over both.
+ * Two compositions, because a gown and a headline cannot share one column.
  *
- * The gown is a plain server-rendered <Image> with `priority`, so it IS the LCP
- * element and paints without waiting for any JavaScript. `visual` carries the
- * WebGL dust layer on top of it and is purely additive: the headline, rule,
- * subtext and CTA are all readable before it loads, and the page is complete
- * without it if WebGL is unavailable or motion is reduced.
+ * Phone: a stack. Words first, then the gown beneath them at full width and
+ * full opacity. It previously sat behind the type pushed off the right edge,
+ * which cut a third of the dress away and read as a broken image rather than
+ * as a design choice.
  *
- * On a phone the gown is pushed mostly off the right edge and softened, so it
- * reads as an atmosphere behind the words rather than fighting them for the
- * one column of space there is.
+ * Desktop: side by side, type left and gown right, where there is room for both.
+ *
+ * Either way the gown is a plain server-rendered <Image> with `priority`, so it
+ * IS the LCP element and paints without waiting for JavaScript. `visual` carries
+ * the WebGL dust on top and is purely additive.
  */
 export default function Hero({ visual }: { visual?: ReactNode }) {
   return (
-    <section className="relative flex min-h-[88dvh] items-center overflow-hidden bg-paper">
-      {/* The gown */}
+    <section className="relative overflow-hidden bg-paper lg:flex lg:min-h-[88dvh] lg:items-center">
+      {/* Desktop only: the gown sits behind the type, on the right. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-[-30%] w-[85%] opacity-45 sm:right-[-14%] sm:w-[62%] sm:opacity-70 lg:right-[2%] lg:w-[46%] lg:opacity-100"
+        className="pointer-events-none absolute inset-y-0 right-[2%] hidden w-[46%] lg:block"
       >
         <Image
           src="/brand/hero.webp"
           alt=""
           fill
           priority
-          sizes="(max-width: 640px) 85vw, (max-width: 1024px) 62vw, 46vw"
-          className="anim-settle object-contain object-bottom"
+          sizes="46vw"
+          className="anim-settle object-contain"
         />
       </div>
 
-      {/* Gold dust, over the gown */}
+      {/* Gold dust, over everything */}
       <div className="pointer-events-none absolute inset-0">{visual}</div>
 
-      <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-16 pt-24 lg:px-10 lg:pb-24">
+      <div className="relative mx-auto w-full max-w-[1440px] px-5 pt-24 lg:px-10 lg:pb-24">
         <h1 className="t-display max-w-[24ch] text-ink">
           <span className="mask-line">
             <span>Dressed for the evenings </span>
@@ -58,6 +59,21 @@ export default function Hero({ visual }: { visual?: ReactNode }) {
             Shop the catalog
           </Link>
         </div>
+      </div>
+
+      {/* Phone only: the whole gown, under the words, nothing cropped. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none relative mx-auto mt-10 aspect-[897/1280] w-[86%] max-w-sm lg:hidden"
+      >
+        <Image
+          src="/brand/hero.webp"
+          alt=""
+          fill
+          priority
+          sizes="86vw"
+          className="anim-settle object-contain"
+        />
       </div>
     </section>
   )
