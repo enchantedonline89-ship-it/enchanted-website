@@ -28,10 +28,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }
 
-  // Verify authenticated session (getSession validates JWT locally — no extra network roundtrip)
+  // getUser() revalidates the JWT against the auth server. getSession() must NOT be
+  // used here: on the server it reads the user straight out of the auth cookie, which
+  // @supabase/ssr stores as unsigned base64url JSON, so a forged cookie would let any
+  // caller delete an arbitrary account.
   const supabase = await createClient()
-  const { data: { session }, error: authError } = await supabase.auth.getSession()
-  const user = session?.user ?? null
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -142,6 +142,25 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
   const subtotal = Number(body.subtotal)
   if (!Number.isFinite(subtotal) || subtotal < 0 || subtotal > 100_000) {
     errors.push({ field: 'subtotal', message: 'Subtotal is invalid' })
+  } else if (errors.length === 0 && Array.isArray(body.items)) {
+    // Cross-check subtotal against the submitted line items. Without this, posting
+    // the real cart with `subtotal: 1` was accepted: the order row, the admin screen
+    // and the WhatsApp message all showed the forged figure, and the driver collected
+    // it in cash. Same bug class the delivery_fee check already closed.
+    //
+    // NOTE: this only proves the arithmetic is internally consistent. `items[].price`
+    // is still client-supplied, so an attacker who forges the line prices AND the
+    // subtotal to match still gets through. The complete fix is to re-derive every
+    // price from the products table server-side and ignore the submitted ones. That
+    // needs a reachable database to verify, and the Supabase project is currently
+    // NXDOMAIN, so it is deliberately left as required pre-launch work.
+    const computed = (body.items as Array<Record<string, unknown>>).reduce(
+      (sum, it) => sum + Number(it.price) * Number(it.qty),
+      0,
+    )
+    if (Math.abs(subtotal - computed) > 0.01) {
+      errors.push({ field: 'subtotal', message: 'Subtotal does not match the items' })
+    }
   }
 
   // total — must equal subtotal + delivery_fee (within $0.01 tolerance for floating-point)
@@ -223,7 +242,9 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .insert({
         user_id: authenticatedUserId,
-        user_email: String(body.user_email).trim().toLowerCase(),
+        // Taken from the verified session, never from the request body: a customer
+        // could otherwise stamp another person's address on her own order.
+        user_email: (sessionUser?.email ?? String(body.user_email)).trim().toLowerCase(),
         full_name: String(body.full_name).trim(),
         phone: String(body.phone).trim(),
         delivery_address: String(body.delivery_address).trim(),

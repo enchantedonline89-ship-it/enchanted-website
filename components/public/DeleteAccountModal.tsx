@@ -1,146 +1,157 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
+import { useEffect, useState } from "react"
+import { X, Warning } from "@phosphor-icons/react/ssr"
+import { useAuth } from "@/lib/auth-context"
+import { useOverlay } from "@/lib/use-overlay"
 
-interface DeleteAccountModalProps {
+const CONFIRM_WORD = "DELETE"
+
+export default function DeleteAccountModal({
+  open,
+  onClose,
+}: {
+  open: boolean
   onClose: () => void
-}
-
-export default function DeleteAccountModal({ onClose }: DeleteAccountModalProps) {
-  const [step, setStep] = useState<'warning' | 'confirm'>('warning')
-  const [confirmText, setConfirmText] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+}) {
   const { signOut } = useAuth()
-  const router = useRouter()
+  const [step, setStep] = useState<1 | 2>(1)
+  const [typed, setTyped] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleDelete = async () => {
-    if (confirmText !== 'DELETE') return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/account/delete', { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Something went wrong. Please try again.')
-        setLoading(false)
-        return
-      }
-      await signOut()
-      router.push('/')
-    } catch {
-      setError('Network error. Please check your connection.')
-      setLoading(false)
+  const dialogRef = useOverlay<HTMLDivElement>(open, onClose)
+
+  // Reset the two-step confirmation whenever the dialog closes, during render
+  // so a reopened dialog never shows the previous step or a stale error.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (!open) {
+      setStep(1)
+      setTyped("")
+      setError(null)
+      setBusy(false)
     }
   }
 
+  useEffect(() => {
+    if (!open) return
+  }, [open])
+
+  async function handleDelete() {
+    if (typed !== CONFIRM_WORD) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/account/delete", { method: "DELETE" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? "We could not delete the account. Please contact us.")
+        setBusy(false)
+        return
+      }
+      await signOut()
+      window.location.href = "/"
+    } catch {
+      setError("Network error. Check your connection and try again.")
+      setBusy(false)
+    }
+  }
+
+  if (!open) return null
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+    <div className="fixed inset-0 z-[95] flex items-end justify-center sm:items-center">
+      <button
         aria-hidden="true"
+        tabIndex={-1}
+        onClick={onClose}
+        className="absolute inset-0 bg-ink/45"
       />
 
-      {/* Modal */}
       <div
-        className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="delete-account-title"
+        aria-labelledby="delete-title"
+        className="relative w-full max-w-md border border-line bg-paper-raised"
       >
-        <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
-          {/* Close button */}
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h2 id="delete-title" className="t-meta text-ink">
+            Delete your account
+          </h2>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-muted hover:text-foreground transition-colors p-1"
+            className="flex h-10 w-10 items-center justify-center text-ink"
             aria-label="Close"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            <X size={19} weight="light" />
           </button>
+        </div>
 
-          {step === 'warning' ? (
+        <div className="p-5">
+          {step === 1 ? (
             <>
-              {/* Warning icon */}
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
+              <div className="flex h-11 w-11 items-center justify-center border border-signal-error text-signal-error">
+                <Warning size={20} weight="light" />
               </div>
-
-              <h2 id="delete-account-title" className="font-display text-xl text-foreground text-center mb-2">
-                Delete Account
-              </h2>
-              <p className="text-muted text-sm text-center mb-5 leading-relaxed">
-                This will permanently delete your account and all your order history. This action cannot be undone.
+              <p className="mt-4 text-[0.9375rem] text-ink">This cannot be undone.</p>
+              <p className="t-body mt-3 text-[0.875rem]">
+                Your sign in and your order history on this site are removed. Orders
+                already placed with us stay in our records, because we need them to
+                complete deliveries and to keep our books straight.
               </p>
-
-              <button
-                onClick={() => setStep('confirm')}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors mb-2"
-              >
-                Continue
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full py-2.5 border border-border text-muted text-sm rounded-lg hover:border-gold/40 hover:text-foreground transition-all"
-              >
-                Cancel
-              </button>
+              <div className="mt-6 flex flex-col gap-2">
+                <button onClick={() => setStep(2)} className="btn btn-ghost w-full">
+                  Continue
+                </button>
+                <button onClick={onClose} className="btn btn-primary w-full">
+                  Keep my account
+                </button>
+              </div>
             </>
           ) : (
             <>
-              <h2 id="delete-account-title" className="font-display text-xl text-foreground text-center mb-2">
-                Confirm Deletion
-              </h2>
-              <p className="text-muted text-sm text-center mb-4 leading-relaxed">
-                Type <span className="font-mono font-bold text-foreground">DELETE</span> to confirm you want to permanently delete your account.
-              </p>
-
+              <label htmlFor="delete-confirm" className="t-meta mb-1.5 block">
+                Type {CONFIRM_WORD} to confirm
+              </label>
               <input
-                type="text"
-                value={confirmText}
-                onChange={e => setConfirmText(e.target.value)}
-                placeholder="Type DELETE"
-                autoFocus
-                className="w-full text-sm px-3 py-2.5 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-red-400 transition-colors mb-4 font-mono"
+                id="delete-confirm"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                className="field"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={Boolean(error)}
               />
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg mb-3">
+                <p
+                  role="alert"
+                  className="mt-3 border border-signal-error/40 bg-signal-error/10 px-3 py-2.5 text-[0.8125rem] text-signal-error"
+                >
                   {error}
-                </div>
+                </p>
               )}
 
-              <button
-                onClick={handleDelete}
-                disabled={confirmText !== 'DELETE' || loading}
-                className={`w-full py-3 text-sm font-semibold rounded-lg transition-all mb-2 ${
-                  confirmText === 'DELETE' && !loading
-                    ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
-                    : 'bg-border text-subtle cursor-not-allowed'
-                }`}
-              >
-                {loading ? 'Deleting...' : 'Delete My Account'}
-              </button>
-              <button
-                onClick={() => { setStep('warning'); setConfirmText('') }}
-                disabled={loading}
-                className="w-full py-2.5 border border-border text-muted text-sm rounded-lg hover:border-gold/40 hover:text-foreground transition-all"
-              >
-                ← Back
-              </button>
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  onClick={handleDelete}
+                  disabled={typed !== CONFIRM_WORD || busy}
+                  className="btn btn-danger w-full"
+                >
+                  {busy ? "Deleting" : "Delete my account"}
+                </button>
+                <button onClick={onClose} className="btn btn-ghost w-full">
+                  Cancel
+                </button>
+              </div>
             </>
           )}
         </div>
       </div>
-    </>
+    </div>
   )
 }

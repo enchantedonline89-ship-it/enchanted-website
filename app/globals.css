@@ -1,335 +1,471 @@
 @import "tailwindcss";
 
 /* ============================================================
-   ENCHANTED STYLE — Global Theme
-   Light luxury cream palette
+   ENCHANTED STYLE
+   White and gold. Feminine, romantic, elegant, timeless.
+   Every ratio below was computed, not estimated.
+   See DESIGN.md for the reasoning behind each token.
    ============================================================ */
 
 @theme inline {
-  /* Light luxury palette */
-  --color-background:  #faf9f7;
-  --color-surface:     #f5f2ee;
-  --color-card:        #ffffff;
-  --color-border:      #e8e2da;
-  --color-foreground:  #1a1a1a;
-  --color-muted:       #6b6b6b;
-  --color-subtle:      #aaaaaa;
-  --color-obsidian:    #faf9f7;   /* remapped so bg-obsidian = light bg */
-  /* Gold palette unchanged */
-  --color-gold:        #c9a84c;
-  --color-gold-light:  #f0d060;
-  --color-gold-muted:  #9a7a35;
-  --color-white:       #ffffff;
+  /* Surfaces */
+  --color-paper:        #ffffff;
+  --color-paper-raised: #faf9f7;
+  --color-paper-sunken: #f4f2ee;
 
-  /* Fonts */
-  --font-display: var(--font-playfair);
-  --font-sans:    var(--font-dm-sans);
+  /* Ink. Ratios are against paper. */
+  --color-ink:        #14120e;   /* 18.71:1 */
+  --color-ink-dim:    #5c574e;   /*  7.17:1 */
+  --color-ink-faint:  #6f6a60;   /*  5.38:1, and 4.81:1 on sunken */
+
+  /* Gold, sampled from the logo.
+     The bright gold is a FILL and a decoration. It measures 1.69:1 on white and
+     must never carry text. Dark ink ON gold is 11.09:1, which is how the brand
+     colour stays usable. --color-gold-deep is the logo's own shadow tone and is
+     the only gold permitted as type. */
+  --color-gold:      #f0c068;
+  --color-gold-hi:   #f8d488;
+  --color-gold-deep: #7a5518;   /* 6.69:1 on paper */
+
+  /* line is a divider. line-strong is a control boundary at 3.11:1. */
+  --color-line:        rgba(20, 18, 14, 0.12);
+  --color-line-strong: rgba(20, 18, 14, 0.46);
+
+  /* Functional signal only. Never decorative. */
+  --color-signal-error: #a8321f;
+  --color-signal-ok:    #2f6b3c;
+  --color-signal-warn:  #8a5a09;
+
+  --font-sans:    var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
+
+  --spacing-section: 7.5rem;
 }
 
 /* ============================================================
-   BASE RESET
+   BASE
    ============================================================ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
+  color-scheme: light;
   scroll-behavior: smooth;
+  background-color: #ffffff;
+  scrollbar-color: rgba(20, 18, 14, 0.28) #ffffff;
+  scrollbar-width: thin;
 }
 
 body {
-  background-color: #faf9f7;
-  color: #1a1a1a;
-  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  background-color: #ffffff;
+  color: #14120e;
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  cursor: none; /* Custom cursor overrides */
   overflow-x: hidden;
 }
 
-/* Hide scrollbar but keep functionality */
+/* ============================================================
+   BROWSER SURFACES
+   The parts we did not draw still carry the design.
+   ============================================================ */
+
+::selection {
+  background: #f8d488;
+  color: #14120e;
+}
+
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #f5f2ee;
+  background: #faf9f7;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c9a84c44;
-  border-radius: 2px;
+  background: rgba(20, 18, 14, 0.22);
+  border: 3px solid #ffffff;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #c9a84c;
+  background: rgba(20, 18, 14, 0.38);
 }
 
-/* Selection */
-::selection {
-  background: #c9a84c33;
-  color: #1a1a1a;
+input,
+textarea,
+select {
+  caret-color: #7a5518;
 }
 
-/* ============================================================
-   TYPOGRAPHY
-   ============================================================ */
-
-.font-display {
-  font-family: var(--font-playfair), Georgia, serif;
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid #14120e;
+  outline-offset: 3px;
+  border-radius: 0;
 }
 
-/* ============================================================
-   CUSTOM CURSOR
-   ============================================================ */
-
-.cursor-dot {
-  width: 8px;
-  height: 8px;
-  background: #c9a84c;
-  border-radius: 50%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 9999;
-  transform: translate(-50%, -50%);
-  transition: transform 0.05s ease, width 0.2s ease, height 0.2s ease, background 0.2s ease;
+a {
+  text-underline-offset: 0.25em;
+  text-decoration-thickness: 1px;
 }
 
-.cursor-ring {
-  width: 32px;
-  height: 32px;
-  border: 1.5px solid #c9a84c88;
-  border-radius: 50%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 9998;
-  transform: translate(-50%, -50%);
-  transition: transform 0.12s ease, width 0.25s ease, height 0.25s ease, border-color 0.25s ease;
-}
-
-.cursor-dot.hovered {
-  width: 12px;
-  height: 12px;
-  background: #f0d060;
-}
-
-.cursor-ring.hovered {
-  width: 52px;
-  height: 52px;
-  border-color: #c9a84c;
-}
-
-/* Disable custom cursor on touch/tablet devices */
-@media (pointer: coarse) {
-  body { cursor: auto; }
-  .cursor-dot, .cursor-ring { display: none; }
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* ============================================================
-   WHATSAPP FLOATING BUTTON
+   COMPONENT LAYER
+
+   These sit inside Tailwind's components layer deliberately. Unlayered CSS beats
+   every layered rule regardless of specificity, and while these classes sat
+   outside a layer they silently overrode any utility written beside them.
    ============================================================ */
 
-@keyframes wa-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
+@layer components {
+
+/* ---------- Type roles ----------
+   Display is Cormorant Garamond, a high-contrast old-style serif. It is what
+   makes the page read as romantic and timeless rather than as a tech product,
+   and it answers the script and serif already in the logo. Everything
+   functional stays in Archivo, which is far more legible at the sizes prices,
+   size chips and form labels are set in. */
+
+.t-wordmark {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
-.wa-pulse-ring {
-  animation: wa-pulse 2s ease-in-out infinite;
+.t-display {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-size: clamp(2.75rem, 6vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+  text-wrap: balance;
 }
 
-/* ============================================================
-   NAVBAR GLASS EFFECT
-   ============================================================ */
-
-.nav-glass {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background-color: rgba(250, 249, 247, 0.85);
-  border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+.t-section {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-size: clamp(1.875rem, 3.6vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-wrap: balance;
 }
 
-/* ============================================================
-   HERO SECTION — Light luxury ambient animations
-   ============================================================ */
-
-@keyframes orbBreath {
-  0%, 100% { transform: scale(1);    opacity: 1; }
-  50%       { transform: scale(1.10); opacity: 0.7; }
+.t-body {
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 68ch;
+  color: #5c574e;
 }
 
-@keyframes particleDrift {
-  0%   { transform: translateY(0px)    translateX(0px);   opacity: 0; }
-  8%   { opacity: 1; }
-  80%  { opacity: 0.9; }
-  100% { transform: translateY(-150px) translateX(24px);  opacity: 0; }
+.t-meta {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6f6a60;
+  font-variation-settings: "wght" 500;
 }
 
-/* Respect reduced-motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .hero-orb,
-  .hero-silk-sweep,
-  .hero-diamond,
-  .hero-particle {
-    animation: none !important;
-    opacity: 0.4;
-  }
-}
+/* Reserved for the few places a gold flourish is earned. */
+.t-gold { color: #7a5518; }
 
-/* ============================================================
-   PRODUCT CARD — 3D Tilt + Shine
-   ============================================================ */
+/* ---------- Elements ----------
+   Elevation is declared once and it is always a hairline, never a shadow. */
 
-.product-card-inner {
-  position: relative;
-  transform-style: preserve-3d;
-  transition: box-shadow 0.3s ease;
-  will-change: transform;
-}
+.hairline-t { border-top: 1px solid rgba(20, 18, 14, 0.12); }
+.hairline-b { border-bottom: 1px solid rgba(20, 18, 14, 0.12); }
 
-.product-card-shine {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(255,255,255,0) 0%,
-    rgba(201, 168, 76, 0.15) 40%,
-    rgba(255,255,255,0.05) 50%,
-    rgba(255,255,255,0) 60%
-  );
-  background-size: 200% 200%;
-  background-position: 200% 200%;
-  opacity: 0;
-  transition: opacity 0.3s ease, background-position 0.6s ease;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.product-card-inner:hover .product-card-shine {
-  opacity: 1;
-  background-position: -50% -50%;
-}
-
-/* ============================================================
-   CATEGORY FILTER PILLS
-   ============================================================ */
-
-.category-pill {
-  position: relative;
-  overflow: hidden;
-  transition: color 0.2s ease;
-}
-
-.category-pill::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
+/* The gold rule is the brand's signature on the page, echoing the logo ring. */
+.rule-gold {
   height: 1px;
-  background: #c9a84c;
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.3s ease;
+  border: 0;
+  background: linear-gradient(90deg, #f8d488 0%, #f0c068 45%, #c8912f 100%);
 }
 
-.category-pill.active::after,
-.category-pill:hover::after {
+.link-grow {
+  position: relative;
+  text-decoration: none;
+}
+.link-grow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.2em;
+  height: 1px;
+  width: 100%;
+  background: #f0c068;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-grow:hover::after,
+.link-grow:focus-visible::after {
   transform: scaleX(1);
 }
 
-/* ============================================================
-   GOLD GRADIENT TEXT
-   ============================================================ */
-
-.text-gold-gradient {
-  background: linear-gradient(135deg, #c9a84c 0%, #f0d060 50%, #c9a84c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9375rem 2rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-variation-settings: "wght" 600;
+  border-radius: 0;
+  white-space: nowrap;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
+    transform 0.12s ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.985); }
+.btn:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  color: #6f6a60;
+  border-color: rgba(20, 18, 14, 0.26);
 }
 
-/* ============================================================
-   SECTION DIVIDERS
-   ============================================================ */
-
-.section-divider {
-  width: 60px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #c9a84c, transparent);
-  margin: 0 auto;
+/* Ink on paper, 18.71:1 */
+.btn-primary {
+  background: #14120e;
+  color: #ffffff;
+  border: 1px solid #14120e;
+}
+.btn-primary:hover:not(:disabled) {
+  background: transparent;
+  color: #14120e;
 }
 
-/* ============================================================
-   ADMIN SIDEBAR
-   ============================================================ */
-
-.admin-nav-item {
-  transition: background-color 0.15s ease, color 0.15s ease;
+/* The brand moment. Ink on gold is 11.09:1, which is how the bright gold earns
+   a place without ever being asked to act as type. */
+.btn-gold {
+  background: #f0c068;
+  color: #14120e;
+  border: 1px solid #f0c068;
+}
+.btn-gold:hover:not(:disabled) {
+  background: #f8d488;
+  border-color: #f8d488;
 }
 
-.admin-nav-item.active {
-  background-color: rgba(201, 168, 76, 0.1);
-  color: #c9a84c;
-  border-left: 2px solid #c9a84c;
+.btn-ghost {
+  background: transparent;
+  color: #14120e;
+  border: 1px solid rgba(20, 18, 14, 0.46);
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: #14120e;
+  background: rgba(20, 18, 14, 0.04);
 }
 
-/* ============================================================
-   LOADING / SKELETON
-   ============================================================ */
+.btn-danger {
+  background: transparent;
+  color: #a8321f;
+  border: 1px solid #a8321f;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #a8321f;
+  color: #ffffff;
+}
+
+/* Fields. The sunken fill is only 1.06:1 against paper, so the border is the
+   only thing marking the control and it has to clear 3:1 by itself. 16px avoids
+   the iOS zoom-on-focus that a phone-first checkout cannot afford. */
+.field {
+  width: 100%;
+  background: #faf9f7;
+  border: 1px solid rgba(20, 18, 14, 0.46);
+  border-radius: 0;
+  padding: 0.8125rem 1rem;
+  color: #14120e;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field::placeholder { color: #6f6a60; }
+.field:hover { border-color: rgba(20, 18, 14, 0.7); }
+.field:focus {
+  outline: none;
+  border-color: #7a5518;
+  box-shadow: inset 0 -2px 0 #f0c068;
+}
+.field[aria-invalid="true"] { border-color: #a8321f; }
+
+/* ---------- Motion ----------
+   One authored moment, then service motion only. */
+
+@keyframes settle {
+  from { transform: scale(1.06); }
+  to   { transform: scale(1); }
+}
+
+@keyframes rise {
+  from { transform: translateY(105%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.anim-settle { animation: settle 1.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* The reveal rides inside an overflow-hidden wrapper rather than clipping the
+   text box, so a long headline can never be cut off horizontally. */
+.mask-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.mask-line > * {
+  display: block;
+  animation: rise 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-clear { animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+.anim-delay-1 { animation-delay: 0.14s; }
+.anim-delay-2 { animation-delay: 0.28s; }
+.anim-delay-3 { animation-delay: 0.42s; }
+
+.media-zoom {
+  overflow: hidden;
+  background: #f4f2ee;
+}
+.media-zoom img {
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* will-change is scoped to the interaction rather than declared permanently.
+   On the base rule it promoted every catalog tile to its own compositor layer
+   for the entire page lifetime. */
+.media-zoom:hover img,
+.media-zoom:focus-within img {
+  transform: scale(1.04);
+  will-change: transform;
+}
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
-
 .skeleton {
-  background: linear-gradient(90deg, #f5f2ee 25%, #e8e2da 50%, #f5f2ee 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: #f4f2ee;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
-/* ============================================================
-   SCROLLBAR HIDE UTILITY — used by CategoryFilter overflow scroll
-   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .media-zoom:hover img { transform: none; }
+}
 
-.scrollbar-hide {
-  -ms-overflow-style: none;
+/* ---------- Prose ----------
+   Reading surfaces: policies, guides, help. Structure for comprehension. */
+
+.prose-paper {
+  color: #5c574e;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+.prose-paper > * + * { margin-top: 1.5rem; }
+.prose-paper section + section { margin-top: 3rem; }
+.prose-paper h2 {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  color: #14120e;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.25;
+  margin-bottom: 0.875rem;
+  /* More space above a heading than below it */
+  margin-top: 3rem;
+}
+.prose-paper section > h2:first-child { margin-top: 0; }
+.prose-paper h3 {
+  color: #14120e;
+  font-size: 1rem;
+  font-variation-settings: "wght" 600;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.prose-paper p { max-width: 72ch; }
+.prose-paper a {
+  color: #7a5518;
+  text-decoration: underline;
+  text-decoration-color: rgba(122, 85, 24, 0.4);
+  transition: text-decoration-color 0.2s ease;
+}
+.prose-paper a:hover { text-decoration-color: #7a5518; }
+.prose-paper ul,
+.prose-paper ol {
+  max-width: 72ch;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.prose-paper ul { list-style: none; padding-left: 0; }
+.prose-paper ul > li { position: relative; padding-left: 1.15rem; }
+.prose-paper ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.75em;
+  width: 0.45rem;
+  height: 1px;
+  background: #c8912f;
+}
+.prose-paper ol { list-style: decimal; }
+.prose-paper ol > li::marker {
+  color: #6f6a60;
+  font-variant-numeric: tabular-nums;
+}
+.prose-paper strong {
+  color: #14120e;
+  font-variation-settings: "wght" 600;
+}
+.prose-paper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.prose-paper th {
+  text-align: left;
+  color: #6f6a60;
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-variation-settings: "wght" 500;
+  padding: 0 1rem 0.75rem 0;
+  border-bottom: 1px solid rgba(20, 18, 14, 0.26);
+}
+.prose-paper td {
+  padding: 0.875rem 1rem 0.875rem 0;
+  border-bottom: 1px solid rgba(20, 18, 14, 0.12);
+  color: #14120e;
+}
+
+/* Horizontal tracks hide the bar but stay scrollable and keyboard reachable */
+.track-scroll {
   scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* ============================================================
-   SCROLL ANIMATIONS (handled by GSAP, but fallback)
-   ============================================================ */
-
-.reveal-item {
-  opacity: 0;
-  transform: translateY(40px);
-}
-
-.reveal-item.revealed {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-
-/* Hide scrollbar for horizontal scroll containers */
-.scrollbar-none {
   -ms-overflow-style: none;
-  scrollbar-width: none;
 }
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
+.track-scroll::-webkit-scrollbar { display: none; }
+
+} /* end @layer components */

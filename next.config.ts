@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs"
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -53,6 +54,9 @@ const securityHeaders = [
       // connect-src covers Supabase REST + Auth + Realtime WebSocket
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://wa.me https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
       "media-src 'self'",
+      // PostHog's session recorder and Sentry's replay both run in web workers
+      // created from blob URLs. Without this they fail silently.
+      "worker-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -62,6 +66,17 @@ const securityHeaders = [
   },
 ]
 
+// ─── Analytics and error tracking hosts ───────────────────────────────────────
+// Both PostHog and Sentry are routed through this origin rather than called
+// directly:
+//   - PostHog via the rewrites below, under an unremarkable path.
+//   - Sentry via withSentryConfig's tunnelRoute, at the bottom of this file.
+// That keeps both working behind the ad blockers this audience runs, and means
+// connect-src above stays 'self' with no third-party host added to the CSP.
+const POSTHOG_PROXY_PATH = "/atelier"
+const POSTHOG_ASSET_HOST = "https://us-assets.i.posthog.com"
+const POSTHOG_INGEST_HOST = "https://us.i.posthog.com"
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -70,9 +85,11 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
       },
       {
-        // Supabase Storage — replace PROJECT_ID with your actual project ref
+        // Supabase Storage. Pinned to this project's ref rather than a wildcard,
+        // which would let the image optimizer fetch from any Supabase project.
+        // Update alongside NEXT_PUBLIC_SUPABASE_URL when the project is rebuilt.
         protocol: "https",
-        hostname: "*.supabase.co",
+        hostname: "mnbdyiemlifvxvgobfwq.supabase.co",
       },
     ],
   },
@@ -85,6 +102,50 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+
+  // PostHog's ingestion endpoints end in a trailing slash. Without this, Next
+  // redirects them and event capture breaks.
+  skipTrailingSlashRedirect: true,
+
+  async rewrites() {
+    return [
+      // The two asset rules must precede the catch-all.
+      {
+        source: `${POSTHOG_PROXY_PATH}/static/:path*`,
+        destination: `${POSTHOG_ASSET_HOST}/static/:path*`,
+      },
+      {
+        source: `${POSTHOG_PROXY_PATH}/array/:path*`,
+        destination: `${POSTHOG_ASSET_HOST}/array/:path*`,
+      },
+      {
+        source: `${POSTHOG_PROXY_PATH}/:path*`,
+        destination: `${POSTHOG_INGEST_HOST}/:path*`,
+      },
+    ]
+  },
 }
 
-export default nextConfig
+/**
+ * Sentry wraps the config last so its build-time work (source maps, the tunnel
+ * route) sits outermost.
+ *
+ * With no SENTRY_AUTH_TOKEN present the wrapper is inert at build time, so a
+ * clone of this repo builds cleanly without any Sentry account.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Same-origin tunnel, for the same ad-blocker reason as the PostHog proxy.
+  tunnelRoute: "/mtr",
+
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+
+  // Source maps are uploaded to Sentry and then removed from the deployed
+  // output, so stack traces are readable without publishing the source.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+})

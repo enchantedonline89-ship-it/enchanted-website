@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party skill bundles and local tooling, not project source.
+    // Without these, `npm run lint` drowns in hundreds of phantom errors.
+    ".claude/**",
+    ".agents/**",
+    "node_modules/**",
   ]),
 ]);
 

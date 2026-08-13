@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Product, Category } from '@/types'
-import ImageUpload from './ImageUpload'
+import GalleryUpload from './GalleryUpload'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -24,6 +24,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
     category_id: product?.category_id ?? '',
     price: product?.price?.toString() ?? '',
     image_url: product?.image_url ?? '',
+    additional_images: product?.additional_images ?? [] as string[],
     sizes: product?.sizes ?? [] as string[],
     is_featured: product?.is_featured ?? false,
     is_active: product?.is_active ?? true,
@@ -53,6 +54,8 @@ export default function ProductForm({ product, categories, mode }: Props) {
         category_id: form.category_id || null,
         price: form.price ? parseFloat(form.price) : null,
         image_url: form.image_url || null,
+        additional_images:
+          form.additional_images.length > 0 ? form.additional_images : null,
         sizes: form.sizes.length > 0 ? form.sizes : null,
         is_featured: form.is_featured,
         is_active: form.is_active,
@@ -103,7 +106,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       router.push('/admin/products')
       router.refresh()
     } catch (err) {
-      // Sanitize error messages — never expose raw DB error strings
+      // Sanitize error messages - never expose raw DB error strings
       const msg = err instanceof Error ? err.message : 'unknown'
       if (msg === 'SESSION_EXPIRED') {
         setError('Your session has expired. Please sign in again.')
@@ -117,13 +120,13 @@ export default function ProductForm({ product, categories, mode }: Props) {
     }
   }
 
-  const inputClass = "w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted transition-colors"
-  const labelClass = "block text-sm text-muted mb-1.5"
+  const inputClass = "field"
+  const labelClass = "block text-sm text-ink-dim mb-1.5"
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>
+        <div className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>
       )}
 
       {/* Name */}
@@ -153,8 +156,15 @@ export default function ProductForm({ product, categories, mode }: Props) {
         </div>
       </div>
 
-      {/* Image */}
-      <ImageUpload value={form.image_url} onChange={url => set('image_url', url)} />
+      {/* Photos. Cover plus gallery, ordered. */}
+      <GalleryUpload
+        cover={form.image_url}
+        extra={form.additional_images}
+        onChange={({ cover, extra }) => {
+          set('image_url', cover)
+          set('additional_images', extra)
+        }}
+      />
 
       {/* Sizes */}
       <div>
@@ -165,11 +175,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
               key={size}
               type="button"
               onClick={() => toggleSize(size)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                form.sizes.includes(size)
-                  ? 'bg-gold/20 border-gold text-gold'
-                  : 'bg-card border-border text-muted hover:border-foreground/30 hover:text-foreground'
-              }`}
+              className={`px-3 py-1.5 text-xs font-medium border transition-colors ${ form.sizes.includes(size) ? 'bg-ink/20 border-ink text-ink' : 'bg-paper-raised border-line text-ink-dim hover:border-line-strong hover:text-ink' }`}
             >
               {size}
             </button>
@@ -186,11 +192,11 @@ export default function ProductForm({ product, categories, mode }: Props) {
           <label key={key} className="flex items-center gap-3 cursor-pointer">
             <div
               onClick={() => set(key, !form[key as keyof typeof form])}
-              className={`relative w-11 h-6 rounded-full transition-colors ${(form[key as keyof typeof form] as boolean) ? 'bg-gold' : 'bg-border'}`}
+              className={`relative w-11 h-6 transition-colors ${(form[key as keyof typeof form] as boolean) ? 'bg-ink' : 'bg-line'}`}
             >
-              <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(form[key as keyof typeof form] as boolean) ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-ink shadow transition-transform ${(form[key as keyof typeof form] as boolean) ? 'translate-x-5' : 'translate-x-0'}`} />
             </div>
-            <span className="text-sm text-muted">{label}</span>
+            <span className="text-sm text-ink-dim">{label}</span>
           </label>
         ))}
       </div>
@@ -206,14 +212,14 @@ export default function ProductForm({ product, categories, mode }: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="bg-gold hover:bg-gold-light text-black text-sm font-semibold px-8 py-3 rounded-lg transition-all duration-200 disabled:opacity-50"
+          className="btn btn-primary"
         >
           {saving ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="bg-foreground/5 hover:bg-foreground/10 text-muted hover:text-foreground text-sm px-6 py-3 rounded-lg transition-colors"
+          className="btn btn-ghost"
         >
           Cancel
         </button>

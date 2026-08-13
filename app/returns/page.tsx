@@ -1,33 +1,53 @@
-import Link from 'next/link'
+import type { Metadata } from 'next'
+import PageShell from '@/components/public/PageShell'
+import BreadcrumbJsonLd from '@/components/seo/BreadcrumbJsonLd'
+import { SITE_NAME } from '@/components/seo/site'
 
-export const metadata = {
-  title: 'Returns & Cancellations — Enchanted Style',
-  description: 'Our return and cancellation policy, per Lebanese consumer protection law.',
+const TITLE = 'Returns and cancellations'
+const DESCRIPTION =
+  'Your right to cancel, the condition items must come back in, and how refunds work.'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/returns' },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: '/returns',
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 }
 
 export default function ReturnsPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <Link href="/" className="text-muted hover:text-gold text-sm transition-colors mb-8 inline-block">
-        ← Back to Home
-      </Link>
-
-      <h1 className="font-display text-3xl text-foreground mb-2">Returns & Cancellations</h1>
-      <p className="text-muted text-sm mb-10">Last updated: March 2026</p>
-
-      <div className="space-y-8 text-sm text-muted leading-relaxed">
+    <>
+      <BreadcrumbJsonLd items={[{ name: TITLE, path: '/returns' }]} />
+      <PageShell
+        title="Returns and cancellations"
+        standfirst="Your right to cancel, the condition items must come back in, and how refunds work."
+        meta="Last updated March 2026"
+      >
+      <div>
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">1. Your Right to Cancel</h2>
+          <h2>Your right to cancel</h2>
           <p>
             Per Lebanese Consumer Protection Law, you have 10 days from receipt to cancel your order, provided items are unused, unworn, and have original tags attached.
           </p>
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">2. How to Start a Return</h2>
+          <h2>How to start a return</h2>
           <p>
             Contact us via{' '}
-            <a href="https://wa.me/96181351084" className="text-gold hover:underline">
+            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
             within 10 days with your order reference number; we will arrange pickup or confirm a drop-off point.
@@ -35,20 +55,20 @@ export default function ReturnsPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">3. Condition Requirements</h2>
+          <h2>Condition requirements</h2>
           <p>Items must be unworn, unwashed, in original packaging with all tags attached.</p>
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">4. Refund Process</h2>
+          <h2>Refund process</h2>
           <p>
             Refunds are issued via Whish Money or cash on collection within 7 business days of receiving the returned item. Note: all orders are cash on delivery, no card on file.
           </p>
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">5. Non-Returnable Items</h2>
-          <ul className="list-disc list-inside space-y-1.5">
+          <h2>Non-Returnable items</h2>
+          <ul>
             <li>Items marked Final Sale at time of purchase</li>
             <li>Items that have been worn or washed</li>
             <li>Returns initiated after 10 days from receipt</li>
@@ -56,15 +76,16 @@ export default function ReturnsPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">6. Contact</h2>
+          <h2>Contact</h2>
           <p>
             Message us on WhatsApp:{' '}
-            <a href="https://wa.me/96181351084" className="text-gold hover:underline">
+            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
               +961 81 351 084
             </a>
           </p>
         </section>
       </div>
-    </div>
+      </PageShell>
+    </>
   )
 }

@@ -7,10 +7,21 @@ import { NextResponse, type NextRequest } from 'next/server'
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export async function proxy(request: NextRequest) {
-  // Skip in mock mode — no real Supabase to auth against
+  // Mock mode exists so the storefront can be previewed without a backend.
+  // It must never open the admin panel: with no Supabase URL set in production,
+  // this used to wave every /admin/* request straight through, and the admin
+  // pages carry no auth check of their own, so the full customer PII table
+  // would render to an anonymous visitor. Fail closed outside development.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const isMock = !supabaseUrl || supabaseUrl.includes('your_supabase') || !supabaseUrl.startsWith('https://')
-  if (isMock) return NextResponse.next()
+  if (isMock) {
+    if (process.env.NODE_ENV === 'production' && request.nextUrl.pathname.startsWith('/admin')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/login'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
 
   let supabaseResponse = NextResponse.next({ request })
   const supabase = createServerClient(

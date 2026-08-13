@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# but the documented template must ship
+!.env.example
 
 # vercel
 .vercel
@@ -42,4 +44,15 @@ next-env.d.ts
 
 # Claude Code — AI assistant config (may contain tokens / passwords)
 .claude/
+.agents/
 CLAUDE.md
+
+# Generated test and tooling output
+# Playwright HTML report, regenerated on every run
+/playwright-report/
+# Playwright artefacts
+/test-results/
+# Vitest coverage output
+/coverage/
+# skills CLI lockfile; .agents/ itself is ignored
+skills-lock.json

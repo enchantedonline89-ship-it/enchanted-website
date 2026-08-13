@@ -94,7 +94,7 @@ CREATE POLICY "categories_public_read" ON categories
 -- Any authenticated user can read ALL categories (including inactive)
 -- so the admin panel can show inactive rows in dropdowns/lists
 CREATE POLICY "categories_admin_select" ON categories
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Only the admin email can INSERT/UPDATE/DELETE categories
 CREATE POLICY "categories_admin_insert" ON categories
@@ -114,7 +114,7 @@ CREATE POLICY "products_public_read" ON products
 
 -- Any authenticated user can read ALL products (including inactive)
 CREATE POLICY "products_admin_select" ON products
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Only the admin email can INSERT/UPDATE/DELETE products
 CREATE POLICY "products_admin_insert" ON products

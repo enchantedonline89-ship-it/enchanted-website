@@ -4,6 +4,16 @@
 
 export const WHATSAPP_PHONE = '96181351084'
 
+/**
+ * Absolute origin used when a message needs to carry a shareable link.
+ * Kept as a literal rather than imported from components/seo/site.ts: lib must
+ * not depend on the component layer, and it must never be derived from
+ * window.location, which renders differently on the server and the client and
+ * produced a hydration mismatch on every product page.
+ * Update alongside SITE_URL when the custom domain goes live.
+ */
+const SITE_ORIGIN = 'https://enchanted-website-xi.vercel.app'
+
 // ─── Order Payload ────────────────────────────────────────────
 
 export interface OrderPayload {
@@ -29,17 +39,38 @@ export function buildWhatsAppURL(productName: string): string {
 /** Direct WhatsApp link (for floating button) */
 export const WHATSAPP_FLOAT_URL = `https://wa.me/${WHATSAPP_PHONE}`
 
+/**
+ * Enquiry from a product page. Carries the size and the shareable URL when we
+ * have them, so the owner can answer without a round trip asking which piece.
+ */
+export function buildProductEnquiryURL(
+  productName: string,
+  size?: string | null,
+  path?: string,
+): string {
+  const lines = [
+    `Hi! I have a question about ${productName}${size ? `, size ${size}` : ''}.`,
+  ]
+  if (path) {
+    // A fixed base, never window.location. Branching on `typeof window` here
+    // made the server render the deployed origin and the client render
+    // localhost, which is a hydration mismatch on every product page.
+    lines.push(`${SITE_ORIGIN}${path}`)
+  }
+  return `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(lines.join('\n'))}`
+}
+
 // ─── Owner Notification ───────────────────────────────────────
 
 /** Build a WhatsApp URL for the shop owner with full order details */
 export function buildOwnerNotificationURL(order: OrderPayload): string {
   const areaLabel = order.area === 'beirut'
     ? 'Beirut'
-    : `Outside Beirut${order.city ? ` — ${order.city}` : ''}`
+    : `Outside Beirut${order.city ? `, ${order.city}` : ''}`
 
   const itemLines = order.items.map(i => {
-    const size = i.size ? ` — Size ${i.size}` : ''
-    return `• ${i.name}${size} × ${i.qty} — $${(i.price * i.qty).toFixed(2)}`
+    const size = i.size ? `, size ${i.size}` : ''
+    return `${i.name}${size}, qty ${i.qty}, $${(i.price * i.qty).toFixed(2)}`
   })
 
   const parts = [
@@ -62,15 +93,4 @@ export function buildOwnerNotificationURL(order: OrderPayload): string {
   ]
 
   return `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(parts.join('\n'))}`
-}
-
-// ─── Customer Confirmation ────────────────────────────────────
-
-/** Build a WhatsApp URL to send a confirmation message to the customer */
-export function buildCustomerConfirmationURL(phone: string, name: string, total: number): string {
-  const msg = `Hi ${name}! 🌸 Your Enchanted Style order has been received.\n\nTotal: $${total.toFixed(2)} (Cash on Delivery)\n\nWe'll contact you shortly to confirm delivery. Thank you for shopping with us! 💫`
-  // Strip non-digits, ensure international Lebanon format (961 prefix)
-  const cleaned = phone.replace(/\D/g, '')
-  const intl = cleaned.startsWith('961') ? cleaned : `961${cleaned.replace(/^0/, '')}`
-  return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`
 }

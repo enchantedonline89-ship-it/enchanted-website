@@ -8,8 +8,8 @@ export default async function NewProductPage() {
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-8">
-        <a href="/admin/products" className="text-muted hover:text-gold text-sm transition-colors">← Back to Products</a>
-        <h1 className="font-display text-3xl text-foreground mt-3">Add New Product</h1>
+        <a href="/admin/products" className="text-ink-dim hover:text-ink text-sm transition-colors">Back to products</a>
+        <h1 className="text-3xl text-ink mt-3">Add New Product</h1>
       </div>
       <ProductForm categories={categories ?? []} mode="create" />
     </div>

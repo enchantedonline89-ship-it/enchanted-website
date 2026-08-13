@@ -1,144 +1,134 @@
-'use client'
+"use client"
 
-import { useEffect, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import Image from 'next/image'
-
-interface ImageLightboxProps {
-  images: string[]
-  currentIndex: number
-  onClose: () => void
-  onNavigate: (index: number) => void
-}
+import { useEffect, useState, useCallback } from "react"
+import Image from "next/image"
+import { X, CaretLeft, CaretRight } from "@phosphor-icons/react/ssr"
+import { useOverlay } from "@/lib/use-overlay"
+import type { Product } from "@/types"
 
 export default function ImageLightbox({
-  images,
-  currentIndex,
+  product,
   onClose,
-  onNavigate,
-}: ImageLightboxProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
+  initialIndex = 0,
+}: {
+  product: Product | null
+  onClose: () => void
+  /** Open on the frame the caller was looking at, not always the first. */
+  initialIndex?: number
+}) {
+  const [index, setIndex] = useState(initialIndex)
 
-  const prev = useCallback(() => {
-    onNavigate(currentIndex === 0 ? images.length - 1 : currentIndex - 1)
-  }, [currentIndex, images.length, onNavigate])
+  const images = product
+    ? ([product.image_url, ...(product.additional_images ?? [])].filter(Boolean) as string[])
+    : []
 
-  const next = useCallback(() => {
-    onNavigate(currentIndex === images.length - 1 ? 0 : currentIndex + 1)
-  }, [currentIndex, images.length, onNavigate])
+  const next = useCallback(
+    () => setIndex((i) => (i + 1) % Math.max(images.length, 1)),
+    [images.length],
+  )
+  const prev = useCallback(
+    () => setIndex((i) => (i - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1)),
+    [images.length],
+  )
 
-  // Focus the dialog on mount — rAF ensures the portal has painted before focus attempt
+  // Jump to the requested frame whenever a different product, or a different
+  // starting frame, opens. Adjusted during render rather than in an effect so
+  // the lightbox never paints the wrong image first.
+  const [lastKey, setLastKey] = useState<string | null>(null)
+  const openKey = product ? `${product.id}:${initialIndex}` : null
+  if (openKey !== lastKey) {
+    setLastKey(openKey)
+    if (product && index !== initialIndex) setIndex(initialIndex)
+  }
+
+  const dialogRef = useOverlay<HTMLDivElement>(Boolean(product), onClose)
+
   useEffect(() => {
-    const id = requestAnimationFrame(() => { dialogRef.current?.focus() })
-    return () => cancelAnimationFrame(id)
-  }, [])
-
-  // Lock body scroll (useEffect never runs on the server; document access is safe here)
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
-  }, [])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') { onClose(); return }
-    if (e.key === 'ArrowLeft') { prev(); return }
-    if (e.key === 'ArrowRight') { next(); return }
-    // Focus trap: keep Tab/Shift-Tab within the dialog
-    if (e.key === 'Tab' && dialogRef.current) {
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter(el => !el.hasAttribute('disabled'))
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus() }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus() }
-      }
+    if (!product) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") next()
+      if (e.key === "ArrowLeft") prev()
     }
-  }, [onClose, prev, next])
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [product, next, prev])
 
-  if (typeof document === 'undefined') return null
+  if (!product || images.length === 0) return null
 
-  return createPortal(
+  return (
     <div
       ref={dialogRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
-      aria-label="Product image lightbox"
-      tabIndex={-1}
-      className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center outline-none"
-      onClick={onClose}
-      onKeyDown={handleKeyDown}
+      aria-label={product.name}
+      className="fixed inset-0 z-[80] flex flex-col bg-paper/98"
     >
-      {/* Image container — stop propagation so clicking image doesn't close */}
-      <div
-        className="relative w-full max-w-3xl max-h-[85vh] mx-4"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="relative w-full h-[70vh]">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4 lg:px-10">
+        <div className="min-w-0">
+          <p className="truncate text-[0.9375rem] text-ink">{product.name}</p>
+          <p className="tnum t-meta mt-0.5">
+            {product.price != null ? `$${product.price.toFixed(2)}` : "Price on request"}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          autoFocus
+          className="flex h-11 w-11 shrink-0 items-center justify-center text-ink"
+          aria-label="Close"
+        >
+          <X size={20} weight="light" />
+        </button>
+      </div>
+
+      <div className="relative flex min-h-0 flex-1 items-center justify-center p-4 lg:p-10">
+        <div className="relative h-full w-full max-w-3xl">
           <Image
-            src={images[currentIndex]}
-            alt={`Image ${currentIndex + 1} of ${images.length}`}
+            src={images[index]}
+            alt={`${product.name}, image ${index + 1} of ${images.length}`}
             fill
+            sizes="(max-width: 1024px) 100vw, 768px"
             className="object-contain"
-            sizes="(max-width: 768px) 100vw, 75vw"
           />
         </div>
 
-        {/* Dot indicators */}
         {images.length > 1 && (
-          <div className="flex justify-center gap-2 mt-4">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => onNavigate(i)}
-                className={`h-2 rounded-full transition-all duration-200 ${
-                  i === currentIndex ? 'bg-[#c9a84c] w-4' : 'bg-white/30 hover:bg-white/60 w-2'
-                }`}
-                aria-label={`Go to image ${i + 1}`}
-              />
-            ))}
-          </div>
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-4 flex h-12 w-12 items-center justify-center border border-line bg-paper/80 text-ink transition-colors hover:border-line-strong lg:left-10"
+              aria-label="Previous image"
+            >
+              <CaretLeft size={18} weight="light" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-4 flex h-12 w-12 items-center justify-center border border-line bg-paper/80 text-ink transition-colors hover:border-line-strong lg:right-10"
+              aria-label="Next image"
+            >
+              <CaretRight size={18} weight="light" />
+            </button>
+          </>
         )}
       </div>
 
-      {/* Navigation arrows */}
       {images.length > 1 && (
-        <>
-          <button
-            onClick={e => { e.stopPropagation(); prev() }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-black/80 transition-all"
-            aria-label="Previous image"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); next() }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-black/80 transition-all"
-            aria-label="Next image"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-        </>
+        <div className="flex shrink-0 justify-center gap-2 border-t border-line px-5 py-4">
+          {images.map((src, i) => (
+            <button
+              key={src + i}
+              onClick={() => setIndex(i)}
+              aria-label={`Show image ${i + 1}`}
+              aria-current={i === index}
+              className={`relative h-14 w-11 overflow-hidden border transition-colors ${
+                i === index ? "border-ink" : "border-line hover:border-line-strong"
+              }`}
+            >
+              <Image src={src} alt="" fill sizes="44px" className="object-cover" />
+            </button>
+          ))}
+        </div>
       )}
-
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-black/80 transition-all text-xl"
-        aria-label="Close lightbox"
-      >
-        ×
-      </button>
-    </div>,
-    document.body
+    </div>
   )
 }

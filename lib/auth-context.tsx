@@ -45,6 +45,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
 
+      // Tie analytics to a stable id so a returning customer is one person
+      // rather than a new anonymous visitor each time. The email is sent as a
+      // property, not as the distinct id, so it never becomes the primary key.
+      if (event === 'SIGNED_IN' && session?.user) {
+        void import('posthog-js').then(({ default: posthog }) => {
+          if (posthog.__loaded) posthog.identify(session.user.id, { email: session.user.email })
+        })
+      }
+      if (event === 'SIGNED_OUT') {
+        void import('posthog-js').then(({ default: posthog }) => {
+          if (posthog.__loaded) posthog.reset()
+        })
+      }
+
       if (event === 'SIGNED_IN') {
         const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()
         const isAdmin = adminEmail !== undefined &&
@@ -62,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const supabase = createClient()
+    // The cart drawer records its own resume marker when it reaches the auth
+    // wall, because only it knows the chosen delivery area.
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

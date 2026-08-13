@@ -1,53 +1,52 @@
-'use client'
+"use client"
 
-import { cn } from '@/lib/utils'
-import type { Category } from '@/types'
+import type { Category } from "@/types"
 
-interface CategoryFilterProps {
-  categories: Category[]
-  activeSlug: string | null
-  onSelect: (slug: string | null) => void
-}
-
+/**
+ * Text navigation, not pills. The active item is set in ink with a rule under it,
+ * so nothing needs a coloured chip or a dot to read as selected.
+ */
 export default function CategoryFilter({
   categories,
-  activeSlug,
-  onSelect,
-}: CategoryFilterProps) {
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-      {/* "All" pill */}
-      <button
-        onClick={() => onSelect(null)}
-        data-hover
-        className={cn(
-          'category-pill',
-          'whitespace-nowrap px-5 py-2 text-xs tracking-widest uppercase font-medium transition-colors',
-          activeSlug === null
-            ? 'text-[#c9a84c] active'
-            : 'text-muted hover:text-foreground'
-        )}
-      >
-        All
-      </button>
+  active,
+  onChange,
+  counts,
+}: {
+  categories: Category[]
+  active: string
+  onChange: (slug: string) => void
+  counts: Record<string, number>
+}) {
+  const items = [{ id: "all", name: "Everything", slug: "all" }, ...categories]
 
-      {/* Category pills */}
-      {categories.map((category) => (
-        <button
-          key={category.id}
-          onClick={() => onSelect(category.slug)}
-          data-hover
-          className={cn(
-            'category-pill',
-            'whitespace-nowrap px-5 py-2 text-xs tracking-widest uppercase font-medium transition-colors',
-            activeSlug === category.slug
-              ? 'text-[#c9a84c] active'
-              : 'text-muted hover:text-foreground'
-          )}
-        >
-          {category.name}
-        </button>
-      ))}
+  return (
+    <div className="track-scroll -mx-5 overflow-x-auto px-5 lg:mx-0 lg:px-0">
+      <div className="flex min-w-max items-center gap-7" role="group" aria-label="Filter by category">
+        {items.map((cat) => {
+          const isActive = active === cat.slug
+          const count = cat.slug === "all" ? counts.all : (counts[cat.slug] ?? 0)
+          return (
+            <button
+              key={cat.id}
+              aria-pressed={isActive}
+              onClick={() => onChange(cat.slug)}
+              className={`relative flex min-h-11 shrink-0 items-end pb-2.5 text-[0.9375rem] transition-colors ${
+                isActive ? "text-ink" : "text-ink-faint hover:text-ink-dim"
+              }`}
+            >
+              {cat.name}
+              <span className="tnum ml-1.5 align-super text-[0.625rem] text-ink-faint">
+                {count}
+              </span>
+              <span
+                className={`absolute inset-x-0 bottom-0 h-px origin-left bg-ink transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)] ${
+                  isActive ? "scale-x-100" : "scale-x-0"
+                }`}
+              />
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

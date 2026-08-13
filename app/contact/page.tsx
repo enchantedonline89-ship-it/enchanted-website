@@ -1,47 +1,66 @@
-import Link from 'next/link'
+import type { Metadata } from 'next'
+import PageShell from '@/components/public/PageShell'
+import BreadcrumbJsonLd from '@/components/seo/BreadcrumbJsonLd'
+import { SITE_NAME } from '@/components/seo/site'
 
-export const metadata = {
-  title: 'Contact Us — Enchanted Style',
-  description: 'Get in touch with Enchanted Style via WhatsApp or Instagram.',
+const TITLE = 'Contact us'
+const DESCRIPTION = 'WhatsApp is the fastest way to reach us. Instagram and email also work.'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/contact' },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: '/contact',
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 }
 
 export default function ContactPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <Link href="/" className="text-muted hover:text-gold text-sm transition-colors mb-8 inline-block">
-        ← Back to Home
-      </Link>
-
-      <h1 className="font-display text-3xl text-foreground mb-2">Contact Us</h1>
-      <p className="text-muted text-sm mb-10">Last updated: March 2026</p>
-
-      <div className="space-y-8 text-sm text-muted leading-relaxed">
+    <>
+      <BreadcrumbJsonLd items={[{ name: TITLE, path: '/contact' }]} />
+      <PageShell
+        title="Contact us"
+        standfirst="WhatsApp is the fastest way to reach us. Instagram and email also work."
+        meta="Last updated March 2026"
+      >
+      <div>
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">1. WhatsApp</h2>
+          <h2>WhatsApp</h2>
           <p className="mb-4">Our primary contact method.</p>
           <a
             href="https://wa.me/96181351084"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-[#c9a84c]/10 hover:bg-[#c9a84c]/20 border border-[#c9a84c]/30 text-[#c9a84c] text-sm px-5 py-3 rounded-lg transition-all duration-200"
+            className="btn btn-ghost"
           >
             Chat on WhatsApp
           </a>
           <p className="mt-4">
-            <a href="https://wa.me/96181351084" className="text-gold hover:underline">
+            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
               +961 81 351 084
             </a>
           </p>
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">2. Instagram</h2>
+          <h2>Instagram</h2>
           <p>
             <a
               href="https://instagram.com/enchanted.style_"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gold hover:underline"
+              className="text-ink hover:underline"
             >
               @enchanted.style_
             </a>
@@ -49,15 +68,16 @@ export default function ContactPage() {
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">3. Location</h2>
+          <h2>Location</h2>
           <p>Lebanon</p>
         </section>
 
         <section>
-          <h2 className="text-foreground font-semibold text-base mb-3">4. Business Hours</h2>
-          <p>Monday–Saturday, 10am–8pm (Lebanon time)</p>
+          <h2>Business hours</h2>
+          <p>Monday-Saturday, 10am-8pm (Lebanon time)</p>
         </section>
       </div>
-    </div>
+      </PageShell>
+    </>
   )
 }

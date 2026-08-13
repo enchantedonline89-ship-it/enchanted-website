@@ -36,3 +36,20 @@ CREATE POLICY "Users can read own orders" ON orders
   USING (user_id = auth.uid());
 
 -- Service role bypasses RLS automatically (no policy needed)
+
+-- ── Admin access ─────────────────────────────────────────────
+-- Explicit rather than implied. The dashboard reads through the service role,
+-- which bypasses RLS, but relying on that alone means any future code path that
+-- uses the ordinary client silently returns zero rows instead of failing loudly.
+DROP POLICY IF EXISTS "orders_admin_select" ON orders;
+CREATE POLICY "orders_admin_select" ON orders
+  FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
+
+DROP POLICY IF EXISTS "orders_admin_update" ON orders;
+CREATE POLICY "orders_admin_update" ON orders
+  FOR UPDATE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
+  WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
+
+DROP POLICY IF EXISTS "orders_admin_delete" ON orders;
+CREATE POLICY "orders_admin_delete" ON orders
+  FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');

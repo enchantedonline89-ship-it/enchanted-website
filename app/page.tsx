@@ -1,26 +1,27 @@
+import Image from "next/image"
 import Navbar from "@/components/public/Navbar"
 import Hero from "@/components/public/Hero"
-import TrustBar from "@/components/public/TrustBar"
+import HeroCanvas from "@/components/three/HeroCanvas"
+import DeliveryBand from "@/components/public/DeliveryBand"
 import NewArrivals from "@/components/public/NewArrivals"
 import ProductGrid from "@/components/public/ProductGrid"
+import Reveal from "@/components/public/Reveal"
 import Footer from "@/components/public/Footer"
 import WhatsAppFloat from "@/components/public/WhatsAppFloat"
 import CartDrawer from "@/components/public/CartDrawer"
+import CatalogItemListJsonLd from "@/components/seo/CatalogItemListJsonLd"
 import { Product, Category } from "@/types"
 import { mockProducts, mockCategories, isSupabaseMockMode } from "@/lib/mock-data"
 
 export const revalidate = 3600
 
-export default async function HomePage() {
-  let products: Product[] = []
-  let categories: Category[] = []
-
+async function loadCatalog(): Promise<{ products: Product[]; categories: Category[] }> {
   if (isSupabaseMockMode()) {
-    // Preview mode — no Supabase configured yet
-    products = mockProducts
-    categories = mockCategories
-  } else {
-    // Production mode — fetch from Supabase
+    return { products: mockProducts, categories: mockCategories }
+  }
+
+  // A configured but unreachable backend should not render an empty shop.
+  try {
     const { createClient } = await import("@/lib/supabase/server")
     const supabase = await createClient()
 
@@ -38,50 +39,76 @@ export default async function HomePage() {
         .order("sort_order", { ascending: true }),
     ])
 
-    products = (dbProducts ?? []) as Product[]
-    categories = (dbCategories ?? []) as Category[]
+    if (!dbProducts?.length) {
+      return { products: mockProducts, categories: mockCategories }
+    }
+    return {
+      products: dbProducts as Product[],
+      categories: (dbCategories ?? []) as Category[],
+    }
+  } catch {
+    return { products: mockProducts, categories: mockCategories }
   }
+}
 
-  // 5 most recently added active products for New Arrivals
+export default async function HomePage() {
+  const { products, categories } = await loadCatalog()
+
   const newArrivals = [...products]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5)
+    .slice(0, 6)
 
   return (
     <>
+      <CatalogItemListJsonLd products={products} />
       <Navbar />
 
-      <main>
-        <Hero />
-        <TrustBar />
+      <main id="main">
+        <Hero visual={<HeroCanvas />} />
+        <DeliveryBand />
         <NewArrivals products={newArrivals} />
         <ProductGrid products={products} categories={categories} />
 
-        {/* About section */}
-        <section id="about" className="py-24 px-4 max-w-4xl mx-auto text-center">
-          <p className="text-gold text-xs tracking-[0.4em] uppercase mb-4">Our Story</p>
-          <h2 className="font-display text-4xl lg:text-5xl text-foreground mb-6 leading-tight">
-            Fashion is not just clothing.<br />
-            <span className="text-gold-gradient italic">It&apos;s a statement.</span>
-          </h2>
-          <div className="section-divider mb-8" />
-          <p className="text-muted text-lg leading-relaxed max-w-2xl mx-auto">
-            Enchanted Style was born from a passion for curating the most captivating women&apos;s
-            fashion in Lebanon. Every piece in our collection is handpicked for women who refuse
-            to be ordinary — who wear glamour not just as clothing, but as armour.
-          </p>
-          <a
-            href="https://www.instagram.com/enchanted.style_"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-hover
-            className="inline-flex items-center gap-2 mt-8 text-gold text-sm tracking-widest uppercase hover:text-gold-light transition-colors"
-          >
-            Follow us @enchanted.style_
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M7 17L17 7M7 7h10v10" />
-            </svg>
-          </a>
+        {/* Asymmetric split. Used once on the page. */}
+        <section id="story" className="scroll-mt-[68px] border-t border-line">
+          <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-stretch lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="relative aspect-[4/5] w-full lg:aspect-auto lg:min-h-[38rem]">
+              <Image
+                src="/catalog/1512374382149-23.jpg"
+                alt="Footwear photographed on a dark concrete floor"
+                fill
+                sizes="(max-width: 1024px) 100vw, 42vw"
+                className="object-cover"
+                style={{ filter: "brightness(0.88) saturate(0.85)" }}
+              />
+            </div>
+
+            <Reveal className="flex flex-col justify-center px-5 py-16 lg:px-16 lg:py-24">
+              <h2 className="t-section max-w-[16ch] text-ink">
+                Curated in Beirut, one piece at a time.
+              </h2>
+              <p className="t-body mt-7">
+                Enchanted Style started as an Instagram feed and turned into a small
+                shop with a clear brief: find the pieces women here actually want to
+                wear out, and get them to the door without a card form standing in the
+                way. Every item is chosen by hand, in sizes that run true.
+              </p>
+              <p className="t-body mt-5">
+                New arrivals land most weeks. If something sells out in your size,
+                message us and we will tell you honestly whether it is coming back.
+              </p>
+              <div className="mt-9">
+                <a
+                  href="https://www.instagram.com/enchanted.style_"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
+                >
+                  Follow the feed
+                </a>
+              </div>
+            </Reveal>
+          </div>
         </section>
       </main>
 

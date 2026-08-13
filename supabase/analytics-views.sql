@@ -98,7 +98,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS order_analytics_singleton
   ON order_analytics (id);
 
 -- ── 3. Access ────────────────────────────────────────────────
-GRANT SELECT ON order_analytics TO authenticated;
+-- Materialized views do NOT honour RLS on their base table, and PostgREST exposes
+-- anything in `public` as a readable endpoint. Granting SELECT to `authenticated`
+-- therefore published total revenue, average order value, top products and top
+-- cities to every customer account. That was tolerable when the schema comment
+-- said public sign-ups were disabled; the storefront now requires a customer
+-- account to check out, so any visitor can create one and read the shop's books.
+REVOKE SELECT ON order_analytics FROM anon, authenticated;
+
+-- The dashboard reads this through the service-role client, which bypasses grants.
+GRANT SELECT ON order_analytics TO service_role;
 
 -- ── 4. Refresh function — called by the manual refresh API ──
 -- Returns void; call via supabase.rpc('refresh_order_analytics')
@@ -133,3 +142,22 @@ CREATE TRIGGER trg_refresh_analytics
   AFTER INSERT OR UPDATE ON orders
   FOR EACH STATEMENT
   EXECUTE FUNCTION trg_fn_refresh_order_analytics();
+
+-- ── 7. Lock down execution ──────────────────────────────────
+-- PostgreSQL grants EXECUTE on new functions to PUBLIC by default, and PostgREST
+-- exposes them as RPC endpoints. Without these REVOKEs, anyone holding only the
+-- public anon key could POST /rest/v1/rpc/refresh_order_analytics and invoke a
+-- definer-rights function directly, making the admin gate on the Next.js route
+-- decorative. The trigger still fires internally; only external callers are cut off.
+REVOKE EXECUTE ON FUNCTION refresh_order_analytics() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION trg_fn_refresh_order_analytics() FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION refresh_order_analytics() TO service_role;
+
+-- ── VERIFY BEFORE DEPLOYING ─────────────────────────────────
+-- REFRESH MATERIALIZED VIEW CONCURRENTLY cannot run inside a transaction block,
+-- and both a PL/pgSQL function body and a trigger always are one. This may raise
+-- SQLSTATE 25001 on every order insert, which would fail checkout at the database
+-- layer. This could not be verified here because the Supabase project no longer
+-- resolves. Run one INSERT against a live database and confirm before launch. If
+-- it does raise, drop the trigger and refresh on a schedule (pg_cron) instead.

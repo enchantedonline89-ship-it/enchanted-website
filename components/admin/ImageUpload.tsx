@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { X, UploadSimple, CircleNotch } from '@phosphor-icons/react/ssr'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -57,18 +58,19 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm text-muted">{label}</label>
+      <label className="t-meta block">{label}</label>
 
       {/* Preview */}
       {value && (
-        <div className="relative w-full h-48 rounded-lg overflow-hidden border border-border bg-card">
+        <div className="relative w-full h-48 overflow-hidden border border-line bg-paper-raised">
           <img src={value} alt="Preview" className="w-full h-full object-cover" />
           <button
             type="button"
             onClick={() => onChange('')}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 text-white text-xs flex items-center justify-center hover:bg-red-500/70 transition-colors"
+            aria-label="Remove this image"
+            className="absolute top-2 right-2 w-8 h-8 bg-ink/40 text-ink flex items-center justify-center border border-line hover:border-signal-error hover:text-signal-error transition-colors"
           >
-            ✕
+            <X size={14} weight="light" />
           </button>
         </div>
       )}
@@ -88,7 +90,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
           onChange(url)
         }}
         placeholder="Paste HTTPS image URL or upload below"
-        className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
+        className="field"
       />
 
       {/* Upload button */}
@@ -97,15 +99,21 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex items-center gap-2 bg-foreground/5 hover:bg-foreground/10 border border-border text-muted hover:text-foreground text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          className="btn btn-ghost"
         >
           {uploading ? (
-            <><span className="animate-spin">↻</span> Uploading...</>
+            <>
+              <CircleNotch size={14} weight="light" className="animate-spin" />
+              Uploading
+            </>
           ) : (
-            <><span>↑</span> Upload Image</>
+            <>
+              <UploadSimple size={14} weight="light" />
+              Upload image
+            </>
           )}
         </button>
-        <span className="text-muted/50 text-xs">Max 5MB · JPG/PNG/WEBP</span>
+        <span className="t-meta normal-case tracking-normal">Max 5MB, JPG, PNG or WEBP</span>
       </div>
 
       <input
@@ -116,7 +124,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
         className="hidden"
       />
 
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+      {error && <p className="text-signal-error text-xs">{error}</p>}
     </div>
   )
 }

@@ -2,10 +2,14 @@
 // ENCHANTED STYLE — TypeScript Type Definitions
 // ============================================================
 
+export type SizeSystem = 'eu_footwear' | 'letter_clothing' | 'none'
+
+/** Set once per category. Decides which size chart the product page offers. */
 export interface Category {
   id: string
   name: string
   slug: string
+  size_system?: SizeSystem
   description: string | null
   image_url: string | null
   sort_order: number
@@ -13,6 +17,8 @@ export interface Category {
   created_at: string
   updated_at: string
 }
+
+export type FitAdvice = 'true_to_size' | 'size_up' | 'size_down'
 
 export interface Product {
   id: string
@@ -23,6 +29,16 @@ export interface Product {
   image_url: string | null
   additional_images: string[] | null
   sizes: string[] | null
+  /**
+   * Product detail fields. All nullable on purpose: a field the owner leaves
+   * empty renders as nothing rather than as an unverified claim. fit_advice in
+   * particular has no default, because defaulting it would make every untouched
+   * product assert a fit nobody checked.
+   */
+  fit_advice?: FitAdvice | null
+  materials?: string | null
+  heel_height_cm?: number | null
+  model_note?: string | null
   is_featured: boolean
   is_active: boolean
   sort_order: number

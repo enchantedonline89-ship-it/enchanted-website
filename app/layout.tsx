@@ -1,45 +1,70 @@
 import type { Metadata } from "next"
-import { Playfair_Display, DM_Sans } from "next/font/google"
+import { Suspense } from "react"
+import { Archivo, Cormorant_Garamond } from "next/font/google"
+import PostHogPageview from "@/components/analytics/PostHogPageview"
 import "./globals.css"
+import "./three.css"
 import { CartProvider } from "@/lib/cart-context"
 import { AuthProvider } from "@/lib/auth-context"
-import CustomCursor from "@/components/public/CustomCursor"
 import WelcomeModal from "@/components/public/WelcomeModal"
+import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd"
+import { SITE_URL, SITE_NAME } from "@/components/seo/site"
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+/* Archivo carries everything functional: prices, size chips, form labels. It is
+   far more legible at those sizes than a display serif. */
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
   display: "swap",
 })
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+/* Cormorant Garamond carries the display voice. A high-contrast old-style serif
+   is what makes the page read as romantic and timeless, and it answers the
+   script and serif already sitting in the logo. */
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
   display: "swap",
 })
+
+const DESCRIPTION =
+  "Heels, boots, dresses, tops and accessories, curated in Lebanon. Cash on delivery, ordered over WhatsApp."
 
 export const metadata: Metadata = {
-  title: "Enchanted Style — Women's Fashion Lebanon",
-  description:
-    "Curated women's fashion from Lebanon. Heels, boots, dresses, tops & accessories. Where glamour meets edge. Order via WhatsApp.",
-  keywords: ["women's fashion", "Lebanon", "heels", "dresses", "boots", "accessories", "enchanted style"],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Enchanted Style | Women's Fashion, Lebanon",
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DESCRIPTION,
+  keywords: [
+    "women's fashion",
+    "Lebanon",
+    "Beirut",
+    "heels",
+    "dresses",
+    "boots",
+    "accessories",
+    "enchanted style",
+  ],
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "Enchanted Style",
-    description: "Curated women's fashion from Lebanon. Where glamour meets edge.",
+    title: SITE_NAME,
+    description: DESCRIPTION,
+    url: "/",
+    siteName: SITE_NAME,
     type: "website",
     locale: "en_US",
-    images: [
-      {
-        url: "/logo.svg",
-        width: 1200,
-        height: 630,
-        alt: "Enchanted Style — Lebanese Women's Fashion",
-      },
-    ],
   },
-  icons: {
-    icon: "/favicon.ico",
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: DESCRIPTION,
   },
+  icons: { icon: "/favicon.ico" },
 }
 
 export default function RootLayout({
@@ -49,10 +74,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${dmSans.variable} antialiased`}>
+      <body
+        className={`${archivo.variable} ${cormorant.variable} bg-paper text-ink antialiased`}
+      >
+        <a
+          href="#main"
+          className="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:left-5 focus:top-5 focus:z-[100]"
+        >
+          Skip to content
+        </a>
+        <OrganizationJsonLd />
+        {/* useSearchParams opts its subtree into client rendering, so the
+            pageview tracker is isolated behind its own Suspense boundary. */}
+        <Suspense fallback={null}>
+          <PostHogPageview />
+        </Suspense>
         <AuthProvider>
           <CartProvider>
-            <CustomCursor />
             <WelcomeModal />
             {children}
           </CartProvider>

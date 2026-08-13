@@ -1,53 +1,40 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import AdminSidebar from '@/components/admin/AdminSidebar'
-import Logo from '@/components/public/Logo'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import AdminShell from '@/components/admin/AdminShell'
 
-export default function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const router = useRouter()
+export const dynamic = 'force-dynamic'
 
-  const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-    router.refresh()
+/**
+ * Server-side authorization gate for every admin page.
+ *
+ * proxy.ts already checks this at the edge, but until now that was the ONLY
+ * check: this layout was a client component with no verification, and the pages
+ * beneath it fetch every order, including customer names, phone numbers and
+ * delivery addresses. A middleware bypass, or a misconfigured
+ * NEXT_PUBLIC_SUPABASE_URL putting the proxy into mock mode, would have served
+ * that table to an anonymous visitor.
+ *
+ * Defence in depth: nothing below can render unless this passes, whatever
+ * happens at the edge.
+ */
+export default async function ProtectedAdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const adminEmail = (process.env.ADMIN_EMAIL ?? '').toLowerCase()
+
+  // Fails closed. With ADMIN_EMAIL unset, nobody is an admin.
+  if (!adminEmail) redirect('/admin/login')
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user || user.email?.toLowerCase() !== adminEmail) {
+    redirect('/admin/login')
   }
 
-  return (
-    <div className="flex min-h-screen bg-background">
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header — hidden on md+ */}
-        <header className="md:hidden h-14 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-30">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 text-muted hover:text-foreground transition-colors"
-            aria-label="Open menu"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M3 5h14M3 10h14M3 15h14" />
-            </svg>
-          </button>
-
-          <Logo className="h-7 w-auto" />
-
-          <button
-            onClick={handleLogout}
-            className="p-2 -mr-2 text-muted hover:text-red-400 transition-colors text-base"
-            aria-label="Sign out"
-          >
-            ↪
-          </button>
-        </header>
-
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
-      </div>
-    </div>
-  )
+  return <AdminShell>{children}</AdminShell>
 }

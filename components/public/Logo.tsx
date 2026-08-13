@@ -1,35 +1,40 @@
-interface LogoProps {
+import Link from "next/link"
+import Image from "next/image"
+
+/**
+ * The supplied wordmark, cropped out of the ring lockup so it sits comfortably
+ * in a 68px navigation bar. The full ring lockup lives at
+ * /brand/logo-mark.png and is used where there is room to give it air.
+ *
+ * The mark is gold on transparent, which only reads on a light ground. That is
+ * one of the reasons the site is built on paper rather than on ink.
+ */
+export default function Logo({
+  className = "",
+  size = "md",
+}: {
   className?: string
-}
+  size?: "sm" | "md" | "lg"
+}) {
+  const width = { sm: 116, md: 140, lg: 190 }[size]
+  const height = Math.round((width * 393) / 900)
 
-export default function Logo({ className = 'h-9 w-auto' }: LogoProps) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 220 40"
-      fill="none"
-      className={className}
-      aria-label="Enchanted Style"
-      role="img"
+    <Link
+      href="/"
+      aria-label="Enchanted Style, home"
+      className={`inline-flex items-center transition-opacity duration-200 hover:opacity-75 ${className}`}
     >
-      <style>{`text { font-family: var(--font-playfair), Georgia, 'Times New Roman', serif; }`}</style>
-
-      {/* Decorative diamond accent */}
-      <polygon points="10,20 16,14 22,20 16,26" fill="#c9a84c" opacity="0.9" />
-      <polygon points="10,20 16,14 22,20 16,26" fill="none" stroke="#c9a84c" strokeWidth="0.5" opacity="0.5" />
-
-      {/* ENCHANTED */}
-      <text x="30" y="16" fontSize="11" fontWeight="700" letterSpacing="4" fill="#c9a84c">
-        ENCHANTED
-      </text>
-
-      {/* Thin rule */}
-      <line x1="30" y1="20" x2="210" y2="20" stroke="#c9a84c" strokeWidth="0.4" opacity="0.5" />
-
-      {/* STYLE */}
-      <text x="30" y="33" fontSize="9" fontWeight="400" letterSpacing="8" fill="#5a4a35">
-        STYLE
-      </text>
-    </svg>
+      <Image
+        src="/brand/logo-wordmark.png"
+        alt="Enchanted Style"
+        width={width}
+        height={height}
+        priority
+        sizes={`${width}px`}
+        className="h-auto w-auto"
+        style={{ width, height }}
+      />
+    </Link>
   )
 }

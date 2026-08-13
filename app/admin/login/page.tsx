@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError('Invalid email or password')
+      setError('That email and password do not match an account.')
       setLoading(false)
       return
     }
@@ -30,62 +31,68 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <Logo className="h-12 w-auto mb-4" />
-          <h1 className="font-display text-3xl text-foreground">Admin Access</h1>
-          <p className="text-muted text-sm mt-2">Sign in to manage your catalog</p>
-        </div>
+    <main className="flex min-h-[100dvh] flex-col">
+      <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-line px-5 lg:px-10">
+        <Logo />
+        <p className="t-meta">Staff</p>
+      </div>
 
-        {/* Form */}
-        <div className="bg-surface border border-border rounded-2xl p-8">
-          <form onSubmit={handleLogin} className="space-y-5">
+      <div className="flex flex-1 items-center justify-center px-5 py-16">
+        <div className="w-full max-w-sm">
+          <h1 className="t-section text-ink">Sign in to manage the shop.</h1>
+          <p className="t-body mt-4 text-[0.9375rem]">
+            This panel is for the shop owner. Customer accounts sign in from the
+            storefront instead.
+          </p>
+
+          <form onSubmit={handleLogin} className="mt-8 flex flex-col gap-4">
+            <div>
+              <label htmlFor="admin-email" className="t-meta mb-1.5 block">
+                Email
+              </label>
+              <input
+                id="admin-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field"
+                autoComplete="email"
+                aria-invalid={Boolean(error)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="admin-password" className="t-meta mb-1.5 block">
+                Password
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="field"
+                autoComplete="current-password"
+                aria-invalid={Boolean(error)}
+              />
+            </div>
+
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">
+              <p
+                role="alert"
+                className="border border-signal-error/40 bg-signal-error/10 px-3 py-2.5 text-[0.8125rem] text-signal-error"
+              >
                 {error}
-              </div>
+              </p>
             )}
 
-            <div>
-              <label className="block text-sm text-muted mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
-                placeholder="admin@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm text-muted mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-gold/50 placeholder:text-muted"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gold hover:bg-gold-light text-black font-semibold py-3 rounded-lg text-sm transition-all duration-200 disabled:opacity-50 mt-2"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
+            <button type="submit" disabled={loading} className="btn btn-primary w-full">
+              {loading ? 'Signing in' : 'Sign in'}
             </button>
           </form>
         </div>
-
-        <p className="text-muted/40 text-xs text-center mt-6">Enchanted Style Admin Panel</p>
       </div>
-    </div>
+    </main>
   )
 }

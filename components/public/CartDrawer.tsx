@@ -1,102 +1,133 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import { useCart, cartItemKey } from '@/lib/cart-context'
-import { useAuth } from '@/lib/auth-context'
-import AuthModal from '@/components/public/AuthModal'
-import {
-  WHATSAPP_PHONE,
-  buildOwnerNotificationURL,
-  buildCustomerConfirmationURL,
-  type OrderPayload,
-} from '@/lib/whatsapp'
-import { formatPrice } from '@/lib/utils'
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { X, Minus, Plus, Trash, ArrowLeft, Check } from "@phosphor-icons/react/ssr"
+import { useCart } from "@/lib/cart-context"
+import { useOverlay } from "@/lib/use-overlay"
+import { useAuth } from "@/lib/auth-context"
+import AuthModal from "./AuthModal"
+import { buildOwnerNotificationURL, type OrderPayload } from "@/lib/whatsapp"
 
-// ─── Whish payment WhatsApp link ──────────────────────────────
-const WHISH_WA_URL = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(
-  "Hi! I'd like to arrange a Whish payment for my order."
-)}`
+type DrawerState = "cart" | "auth-required" | "details" | "success"
 
-// ─── Drawer state ─────────────────────────────────────────────
-type DrawerState = 'cart' | 'details' | 'success' | 'auth-required'
+const money = (n: number) => `$${n.toFixed(2)}`
 
-// ─── Component ────────────────────────────────────────────────
+const RESUME_KEY = "enchanted_resume_checkout"
+
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeFromCart, updateQuantity, clearCart } = useCart()
-  const { user, loading } = useAuth()
+  const { items, isOpen, openCart, closeCart, removeFromCart, updateQuantity, clearCart } =
+    useCart()
+  const { user } = useAuth()
 
-  // Drawer state machine
-  const [drawerState, setDrawerState] = useState<DrawerState>('cart')
+  const [drawerState, setDrawerState] = useState<DrawerState>("cart")
+  const [authOpen, setAuthOpen] = useState(false)
 
-  // Step 1: delivery area
-  const [area, setArea] = useState<'beirut' | 'outside' | null>(null)
-  const [city, setCity] = useState('')
+  const [area, setArea] = useState<"beirut" | "outside" | null>(null)
+  const [city, setCity] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [deliveryAddress, setDeliveryAddress] = useState("")
+  const [orderNotes, setOrderNotes] = useState("")
 
-  // Step 2: customer details
-  const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [deliveryAddress, setDeliveryAddress] = useState('')
-  const [orderNotes, setOrderNotes] = useState('')
-
-  // Submission state
   const [placing, setPlacing] = useState(false)
   const [placeError, setPlaceError] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
+  // Held so the success screen can offer the handoff as a real anchor. window.open
+  // fires after an awaited fetch, so its user-activation token is spent and mobile
+  // browsers block it; the anchor is a fresh gesture and never blocked.
+  const [ownerUrl, setOwnerUrl] = useState<string | null>(null)
 
-  // When drawer opens, decide initial state
-  useEffect(() => {
-    if (!isOpen) return
-    if (!loading && !user) {
-      setDrawerState('auth-required')
-    } else if (!loading && user) {
-      // Pre-fill name from user metadata
-      setFullName(user.user_metadata?.full_name ?? '')
-      setDrawerState('cart')
-    }
-  }, [isOpen, user, loading])
-
-  // When user signs in while drawer is open in auth-required state, advance to cart
-  useEffect(() => {
-    if (isOpen && drawerState === 'auth-required' && user && !loading) {
-      setFullName(user.user_metadata?.full_name ?? '')
-      setDrawerState('cart')
-    }
-  }, [user, loading, isOpen, drawerState])
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeCart()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, closeCart])
-
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
-
-  // ─── Derived values ───────────────────────────────────────
   const subtotal = items.reduce(
     (sum, item) => sum + (item.product.price ?? 0) * item.quantity,
-    0
+    0,
   )
-  const deliveryFee = area === 'beirut' ? 3 : area === 'outside' ? 4 : 0
+  const deliveryFee = area === "beirut" ? 3 : area === "outside" ? 4 : 0
   const total = subtotal + deliveryFee
 
-  // ─── Place order handler ──────────────────────────────────
-  const handlePlaceOrder = async () => {
-    if (!user) return
+  const dialogRef = useOverlay<HTMLDivElement>(isOpen, handleClose)
+
+  /**
+   * Google sign in is a full page redirect, so every field in this component is
+   * destroyed and the customer lands back on the homepage with her cart intact
+   * but the drawer closed and no sign she was mid checkout.
+   *
+   * Reaching the auth wall records the step and the delivery area, which is a
+   * region choice rather than personal data. Name, phone and address are never
+   * written to storage; she retypes those, which is the correct trade.
+   */
+  useEffect(() => {
+    if (drawerState !== "auth-required") return
+    try {
+      window.sessionStorage.setItem(
+        RESUME_KEY,
+        JSON.stringify({ area, city: city.trim() }),
+      )
+    } catch {
+      /* private mode: she reopens the cart herself */
+    }
+  }, [drawerState, area, city])
+
+  useEffect(() => {
+    if (!user || items.length === 0) return
+    let raw: string | null = null
+    try {
+      raw = window.sessionStorage.getItem(RESUME_KEY)
+      if (raw) window.sessionStorage.removeItem(RESUME_KEY)
+    } catch {
+      return
+    }
+    if (!raw) return
+    try {
+      const saved = JSON.parse(raw) as { area: "beirut" | "outside" | null; city?: string }
+      if (saved.area !== "beirut" && saved.area !== "outside") return
+      setArea(saved.area)
+      setCity(saved.city ?? "")
+      setDrawerState("details")
+      openCart()
+    } catch {
+      /* unreadable marker, fall through to the normal closed state */
+    }
+  }, [user, items.length, openCart])
+
+  // Signing in from the auth wall should drop the customer straight into details
+  useEffect(() => {
+    if (user && drawerState === "auth-required") setDrawerState("details")
+  }, [user, drawerState])
+
+  /**
+   * Leaving a placed order by any route clears the cart, including the X button.
+   * Previously only "Continue shopping" cleared it, so closing with X left the
+   * basket full and invited a duplicate order on reopen.
+   */
+  function handleClose() {
+    if (drawerState === "success") {
+      clearCart()
+      setDrawerState("cart")
+      setOrderId(null)
+    }
+    closeCart()
+  }
+
+  function startCheckout() {
+    if (items.length === 0 || area === null) return
+    setDrawerState(user ? "details" : "auth-required")
+  }
+
+  async function placeOrder(e: React.FormEvent) {
+    e.preventDefault()
+    // A session can lapse while the form is being filled. Returning silently left the
+    // button doing nothing at all, so say what happened and route back to sign in.
+    if (!user) {
+      setPlaceError("Your session expired. Sign in again to place this order.")
+      setDrawerState("auth-required")
+      return
+    }
     setPlacing(true)
     setPlaceError(null)
 
-    const orderItems = items.map(item => ({
+    const orderItems = items.map((item) => ({
       name: item.product.name,
       size: item.selectedSize,
       qty: item.quantity,
@@ -105,12 +136,12 @@ export default function CartDrawer() {
 
     const payload = {
       user_id: user.id,
-      user_email: user.email ?? '',
+      user_email: user.email ?? "",
       full_name: fullName.trim(),
       phone: phone.trim(),
       delivery_address: deliveryAddress.trim(),
-      city: area === 'outside' ? city.trim() || null : null,
-      area: area as 'beirut' | 'outside',
+      city: area === "outside" ? city.trim() || null : null,
+      area: area as "beirut" | "outside",
       delivery_fee: deliveryFee,
       order_notes: orderNotes.trim() || null,
       items: orderItems,
@@ -119,27 +150,26 @@ export default function CartDrawer() {
     }
 
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
-        setPlaceError(data.error ?? 'Failed to place order. Please try again.')
+        setPlaceError(data.error ?? "We could not place that order. Please try again.")
         setPlacing(false)
         return
       }
 
       setOrderId(data.id)
 
-      // Open owner notification in WhatsApp
       const ownerPayload: OrderPayload = {
         full_name: fullName.trim(),
-        user_email: user.email ?? '',
+        user_email: user.email ?? "",
         phone: phone.trim(),
-        area: area as 'beirut' | 'outside',
-        city: area === 'outside' ? city.trim() || null : null,
+        area: area as "beirut" | "outside",
+        city: area === "outside" ? city.trim() || null : null,
         delivery_address: deliveryAddress.trim(),
         order_notes: orderNotes.trim() || null,
         items: orderItems,
@@ -147,580 +177,439 @@ export default function CartDrawer() {
         delivery_fee: deliveryFee,
         total,
       }
-      window.open(buildOwnerNotificationURL(ownerPayload), '_blank')
+      const url = buildOwnerNotificationURL(ownerPayload)
+      setOwnerUrl(url)
+      // Opportunistic only. If the browser blocks it, the success screen's anchor
+      // is the reliable path and the order is already saved either way.
+      window.open(url, "_blank", "noopener")
 
-      setDrawerState('success')
+      setDrawerState("success")
     } catch {
-      setPlaceError('Network error. Please check your connection and try again.')
+      setPlaceError("Network error. Check your connection and try again.")
     } finally {
       setPlacing(false)
     }
   }
 
-  // ─── Render helpers ───────────────────────────────────────
-
-  function renderCartItems() {
-    return items.map(item => (
-      <div
-        key={cartItemKey(item.product.id, item.selectedSize)}
-        className="flex gap-3 items-start pb-4 border-b border-border last:border-0"
-      >
-        {/* Product image */}
-        <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-surface">
-          {item.product.image_url ? (
-            <Image
-              src={item.product.image_url}
-              alt={item.product.name}
-              fill
-              className="object-cover"
-              sizes="64px"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg className="w-6 h-6 text-subtle" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        {/* Details */}
-        <div className="flex-1 min-w-0">
-          <p className="text-foreground text-sm font-medium leading-tight truncate">
-            {item.product.name}
-          </p>
-          {item.selectedSize && (
-            <p className="text-muted text-xs mt-0.5">Size: {item.selectedSize}</p>
-          )}
-          <p className="text-gold text-xs mt-1">{formatPrice(item.product.price)}</p>
-
-          {/* Quantity controls */}
-          <div className="flex items-center gap-2 mt-2">
-            <button
-              onClick={() =>
-                updateQuantity(item.product.id, item.selectedSize, item.quantity - 1)
-              }
-              className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted hover:text-foreground hover:border-gold transition-colors text-sm"
-              aria-label="Decrease quantity"
-              data-hover
-            >
-              −
-            </button>
-            <span className="text-foreground text-xs w-4 text-center">{item.quantity}</span>
-            <button
-              onClick={() =>
-                updateQuantity(item.product.id, item.selectedSize, item.quantity + 1)
-              }
-              className="w-6 h-6 flex items-center justify-center rounded border border-border text-muted hover:text-foreground hover:border-gold transition-colors text-sm"
-              aria-label="Increase quantity"
-              data-hover
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {/* Remove */}
-        <button
-          onClick={() => removeFromCart(item.product.id, item.selectedSize)}
-          className="text-subtle hover:text-muted transition-colors mt-0.5 flex-shrink-0"
-          aria-label="Remove item"
-          data-hover
-        >
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    ))
+  const titles: Record<DrawerState, string> = {
+    cart: "Your cart",
+    "auth-required": "Sign in to order",
+    details: "Delivery details",
+    success: "Order placed",
   }
 
-  // ─── State: auth-required ────────────────────────────────
-  function renderAuthRequired() {
-    return <AuthModal onClose={closeCart} />
-  }
-
-  // ─── State: cart (Step 1) ────────────────────────────────
-  function renderCart() {
-    const canProceed = items.length > 0 && area !== null
-
-    return (
-      <>
-        {/* Items list */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-subtle text-sm tracking-wide">Your cart is empty</p>
-              <button
-                onClick={closeCart}
-                className="mt-4 text-gold text-xs uppercase tracking-widest hover:text-gold-light transition-colors"
-                data-hover
-              >
-                Continue Shopping
-              </button>
-            </div>
-          ) : (
-            renderCartItems()
-          )}
-        </div>
-
-        {/* Footer */}
-        {items.length > 0 && (
-          <div className="px-5 py-4 border-t border-border space-y-4">
-            {/* Delivery area selector */}
-            <div>
-              <p className="text-foreground text-xs font-medium uppercase tracking-wider mb-2">
-                Delivery Area
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setArea('beirut')}
-                  className={`py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    area === 'beirut'
-                      ? 'bg-gold/10 border-gold text-gold'
-                      : 'bg-surface border-border text-muted hover:border-gold/40'
-                  }`}
-                  data-hover
-                >
-                  Beirut — $3
-                </button>
-                <button
-                  onClick={() => setArea('outside')}
-                  className={`py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
-                    area === 'outside'
-                      ? 'bg-gold/10 border-gold text-gold'
-                      : 'bg-surface border-border text-muted hover:border-gold/40'
-                  }`}
-                  data-hover
-                >
-                  Outside Beirut — $4
-                </button>
-              </div>
-              {area === 'outside' && (
-                <input
-                  type="text"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  placeholder="City / Area (e.g. Tripoli)"
-                  className="mt-2 w-full text-xs px-3 py-2 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-gold transition-colors"
-                />
-              )}
-            </div>
-
-            {/* Order summary */}
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted">Subtotal</span>
-                <span className="text-foreground font-medium">{formatPrice(subtotal)}</span>
-              </div>
-              {area !== null && (
-                <div className="flex justify-between">
-                  <span className="text-muted">Delivery</span>
-                  <span className="text-foreground font-medium">${deliveryFee.toFixed(2)}</span>
-                </div>
-              )}
-              {area !== null && (
-                <div className="flex justify-between border-t border-border pt-1 mt-1">
-                  <span className="text-foreground font-semibold">Total</span>
-                  <span className="text-gold font-semibold">{formatPrice(total)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Whish Money note */}
-            <div className="bg-surface border border-border rounded-lg px-3 py-2.5 text-xs text-muted">
-              Want to pay with Whish?{' '}
-              <a
-                href={WHISH_WA_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gold hover:text-gold-light underline underline-offset-2 transition-colors"
-              >
-                Contact us on WhatsApp
-              </a>{' '}
-              to arrange payment before confirming.
-            </div>
-
-            {/* Proceed button */}
-            <button
-              onClick={() => setDrawerState('details')}
-              disabled={!canProceed}
-              title={!canProceed ? 'Please select your delivery area' : undefined}
-              className={`w-full flex items-center justify-center gap-2 bg-gold text-black text-xs uppercase tracking-widest font-semibold py-3 rounded-lg transition-all duration-200 active:scale-95 ${
-                canProceed
-                  ? 'hover:bg-gold-light cursor-pointer'
-                  : 'opacity-50 cursor-not-allowed'
-              }`}
-              data-hover
-            >
-              Proceed to Checkout →
-            </button>
-
-            <button
-              onClick={clearCart}
-              className="w-full text-center text-subtle text-xs hover:text-muted transition-colors tracking-wide"
-              data-hover
-            >
-              Clear cart
-            </button>
-          </div>
-        )}
-      </>
-    )
-  }
-
-  // ─── State: details (Step 2) ─────────────────────────────
-  function renderDetails() {
-    const canSubmit =
-      fullName.trim() !== '' &&
-      phone.trim() !== '' &&
-      deliveryAddress.trim() !== '' &&
-      !placing
-
-    return (
-      <>
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border">
-          <span className="text-subtle text-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-border inline-block" />
-            Step 1
-          </span>
-          <span className="text-gold text-xs flex items-center gap-1.5 font-medium">
-            <span className="w-2 h-2 rounded-full bg-gold inline-block" />
-            Step 2
-          </span>
-        </div>
-
-        {/* Fields */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1">
-              Full Name <span className="text-gold">*</span>
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={e => setFullName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full text-sm px-3 py-2.5 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-gold transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1">
-              Phone Number <span className="text-gold">*</span>
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="+961 XX XXX XXX"
-              className="w-full text-sm px-3 py-2.5 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-gold transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1">
-              Delivery Address <span className="text-gold">*</span>
-            </label>
-            <textarea
-              value={deliveryAddress}
-              onChange={e => setDeliveryAddress(e.target.value)}
-              placeholder="Building, street, floor, apartment..."
-              rows={2}
-              className="w-full text-sm px-3 py-2.5 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-gold transition-colors resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1">
-              Order Notes{' '}
-              <span className="text-subtle font-normal">(optional)</span>
-            </label>
-            <textarea
-              value={orderNotes}
-              onChange={e => setOrderNotes(e.target.value)}
-              placeholder="Any special requests..."
-              rows={2}
-              className="w-full text-sm px-3 py-2.5 rounded-lg border border-border bg-surface text-foreground placeholder:text-subtle focus:outline-none focus:border-gold transition-colors resize-none"
-            />
-          </div>
-
-          {/* Order summary recap */}
-          <div className="bg-surface border border-border rounded-lg px-3 py-2.5 space-y-1 text-xs">
-            <div className="flex justify-between text-muted">
-              <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-muted">
-              <span>Delivery ({area === 'beirut' ? 'Beirut' : `Outside${city ? ` — ${city}` : ''}`})</span>
-              <span>${deliveryFee.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
-              <span>Total</span>
-              <span className="text-gold">{formatPrice(total)}</span>
-            </div>
-          </div>
-
-          {/* Error */}
-          {placeError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2.5 rounded-lg">
-              {placeError}
-            </div>
-          )}
-        </div>
-
-        {/* Footer buttons */}
-        <div className="px-5 py-4 border-t border-border space-y-2">
-          <p className="text-[10px] text-muted text-center pb-1">
-            Free returns within 14 days · Cash on Delivery
-          </p>
-          <button
-            onClick={handlePlaceOrder}
-            disabled={!canSubmit}
-            className={`w-full flex items-center justify-center gap-2 bg-gold text-black text-xs uppercase tracking-widest font-semibold py-3 rounded-lg transition-all duration-200 active:scale-95 ${
-              canSubmit
-                ? 'hover:bg-gold-light cursor-pointer'
-                : 'opacity-50 cursor-not-allowed'
-            }`}
-            data-hover
-          >
-            {placing ? (
-              <>
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  />
-                </svg>
-                Placing Order...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                </svg>
-                Place Order
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              setPlaceError(null)
-              setDrawerState('cart')
-            }}
-            className="w-full flex items-center justify-center gap-1.5 border border-border text-muted text-xs py-2.5 rounded-lg hover:border-gold/40 hover:text-foreground transition-all"
-            data-hover
-          >
-            ← Back
-          </button>
-        </div>
-      </>
-    )
-  }
-
-  // ─── State: success ──────────────────────────────────────
-  function renderSuccess() {
-    const shortId = orderId ? orderId.slice(0, 8) : '—'
-    const confirmationURL = buildCustomerConfirmationURL(phone, fullName, total)
-
-    return (
-      <div className="flex-1 overflow-y-auto px-5 py-8 flex flex-col items-center text-center">
-        {/* Icon */}
-        <div className="w-14 h-14 rounded-full bg-gold/10 flex items-center justify-center mb-5">
-          <svg
-            className="w-7 h-7 text-gold"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        </div>
-
-        <h2 className="font-display text-2xl text-foreground mb-1">Order Placed!</h2>
-        <p className="text-subtle text-xs mb-4 tracking-wide">
-          Order ID: <span className="font-mono text-foreground">{shortId}</span>
-        </p>
-
-        {/* Summary */}
-        <div className="bg-surface border border-border rounded-xl px-4 py-3 w-full text-xs text-left space-y-1 mb-5">
-          <div className="flex justify-between text-muted">
-            <span>Items</span>
-            <span className="text-foreground">
-              {items.length} {items.length === 1 ? 'item' : 'items'}
-            </span>
-          </div>
-          <div className="flex justify-between text-muted">
-            <span>Area</span>
-            <span className="text-foreground">
-              {area === 'beirut' ? 'Beirut' : `Outside Beirut${city ? ` — ${city}` : ''}`}
-            </span>
-          </div>
-          <div className="flex justify-between font-semibold border-t border-border pt-1 mt-1">
-            <span className="text-foreground">Total</span>
-            <span className="text-gold">{formatPrice(total)}</span>
-          </div>
-        </div>
-
-        {/* What happens next — 4-step timeline */}
-        <div className="w-full mb-5 text-left">
-          <p className="text-[10px] text-muted uppercase tracking-wider mb-3 font-medium">What happens next</p>
-          <div className="space-y-3">
-            {([
-              { n: '✓', label: 'Order Received', desc: 'Your order is saved in our system', done: true },
-              { n: '2', label: 'WhatsApp Confirmation', desc: 'We will message you to confirm details', done: false },
-              { n: '3', label: 'Order Prepared', desc: 'We package your items with care', done: false },
-              { n: '4', label: 'Cash on Delivery', desc: 'Pay when your order arrives at your door', done: false },
-            ] as const).map(({ n, label, desc, done }) => (
-              <div key={label} className="flex items-start gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold leading-none ${done ? 'bg-gold text-black' : 'bg-surface border border-border text-muted'}`}>
-                  {n}
-                </div>
-                <div>
-                  <p className={`text-xs font-medium leading-tight ${done ? 'text-foreground' : 'text-muted'}`}>{label}</p>
-                  <p className="text-[10px] text-muted/70 leading-tight mt-0.5">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Customer confirmation button */}
-        <a
-          href={confirmationURL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-light text-black text-xs uppercase tracking-widest font-semibold py-3 rounded-lg transition-all duration-200 active:scale-95 mb-1"
-          data-hover
-        >
-          <svg className="w-4 h-4 fill-current flex-shrink-0" viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-          </svg>
-          Send Confirmation to Customer
-        </a>
-        <p className="text-subtle text-xs mb-6">
-          Click to send your customer a WhatsApp confirmation
-        </p>
-
-        {/* TODO: trigger Supabase email — requires email template config */}
-
-        <div className="w-full border-t border-border my-2" />
-
-        <button
-          onClick={() => {
-            clearCart()
-            closeCart()
-          }}
-          className="mt-4 w-full border border-border text-muted text-xs py-2.5 rounded-lg hover:border-gold/40 hover:text-foreground transition-all"
-          data-hover
-        >
-          Continue Shopping
-        </button>
-      </div>
-    )
-  }
-
-  // ─── Render ───────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300 ${
-          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={closeCart}
-        aria-hidden="true"
-      />
-
-      {/* Drawer panel — full-width on mobile, capped at sm on larger screens */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full sm:max-w-sm z-[70] bg-card border-l border-border flex flex-col transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Shopping cart"
+        className={`fixed inset-0 z-[70] ${isOpen ? "" : "pointer-events-none"}`}
+        inert={!isOpen}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-display text-lg text-foreground tracking-wide">
-            {drawerState === 'auth-required' && 'Sign in to order'}
-            {drawerState === 'cart' && 'Your Cart'}
-            {drawerState === 'details' && 'Checkout'}
-            {drawerState === 'success' && 'Confirmed'}
-          </h2>
-          <button
-            onClick={() => {
-              if (drawerState === 'success') clearCart()
-              closeCart()
-            }}
-            className="text-muted hover:text-foreground transition-colors text-2xl leading-none"
-            aria-label="Close cart"
-            data-hover
-          >
-            ×
-          </button>
-        </div>
+        <button
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={handleClose}
+          className={`absolute inset-0 bg-ink/40 transition-opacity duration-300 ${
+            isOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
 
-        {/* Step indicator for cart → details flow */}
-        {(drawerState === 'cart' || drawerState === 'details') && items.length > 0 && (
-          <div className="flex items-center justify-center gap-3 px-5 py-2 border-b border-border bg-surface">
-            <span
-              className={`text-xs flex items-center gap-1.5 ${
-                drawerState === 'cart' ? 'text-gold font-medium' : 'text-subtle'
-              }`}
+        <div
+          ref={dialogRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label={titles[drawerState]}
+          className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-line bg-paper-raised transition-transform duration-400 ease-[cubic-bezier(.16,1,.3,1)] ${
+            isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-line px-5">
+            <div className="flex items-center gap-3">
+              {(drawerState === "details" || drawerState === "auth-required") && (
+                <button
+                  onClick={() => setDrawerState("cart")}
+                  className="flex h-9 w-9 items-center justify-center text-ink-dim hover:text-ink"
+                  aria-label="Back to cart"
+                >
+                  <ArrowLeft size={17} weight="light" />
+                </button>
+              )}
+              <h2 className="t-meta text-ink">{titles[drawerState]}</h2>
+            </div>
+            <button
+              onClick={handleClose}
+              className="flex h-11 w-11 items-center justify-center text-ink"
+              aria-label="Close cart"
             >
-              <span
-                className={`w-2 h-2 rounded-full inline-block ${
-                  drawerState === 'cart' ? 'bg-gold' : 'bg-border'
-                }`}
-              />
-              Delivery
-            </span>
-            <span className="text-subtle text-xs">—</span>
-            <span
-              className={`text-xs flex items-center gap-1.5 ${
-                drawerState === 'details' ? 'text-gold font-medium' : 'text-subtle'
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full inline-block ${
-                  drawerState === 'details' ? 'bg-gold' : 'bg-border'
-                }`}
-              />
-              Your Details
-            </span>
+              <X size={19} weight="light" />
+            </button>
           </div>
-        )}
 
-        {/* Body content */}
-        {drawerState === 'auth-required' && renderAuthRequired()}
-        {drawerState === 'cart' && renderCart()}
-        {drawerState === 'details' && renderDetails()}
-        {drawerState === 'success' && renderSuccess()}
+          {/* ---- CART ---- */}
+          {drawerState === "cart" && (
+            <>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {items.length === 0 ? (
+                  <div className="flex h-full flex-col items-start justify-center gap-4 px-5">
+                    <p className="text-xl text-ink">Your cart is empty.</p>
+                    <p className="t-body text-[0.9375rem]">
+                      Pick a size on any piece in the catalog and it will land here.
+                    </p>
+                    <button onClick={handleClose} className="btn btn-ghost mt-2">
+                      Browse the catalog
+                    </button>
+                  </div>
+                ) : (
+                  <ul>
+                    {items.map((item) => (
+                      <li
+                        key={`${item.product.id}::${item.selectedSize ?? "one"}`}
+                        className="flex gap-4 border-b border-line p-5"
+                      >
+                        <div className="relative h-28 w-20 shrink-0 bg-paper-sunken">
+                          {item.product.image_url && (
+                            <Image
+                              src={item.product.image_url}
+                              alt={item.product.name}
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <p className="text-[0.9375rem] leading-snug text-ink">
+                            {item.product.name}
+                          </p>
+                          {item.selectedSize && (
+                            <p className="t-meta mt-1">Size {item.selectedSize}</p>
+                          )}
+
+                          <div className="mt-auto flex items-center justify-between gap-3 pt-3">
+                            <div className="flex items-center border border-line">
+                              <button
+                                onClick={() =>
+                                  updateQuantity(
+                                    item.product.id,
+                                    item.selectedSize,
+                                    item.quantity - 1,
+                                  )
+                                }
+                                className="flex h-8 w-8 items-center justify-center text-ink-dim hover:text-ink"
+                                aria-label={`Reduce quantity of ${item.product.name}`}
+                              >
+                                <Minus size={15} weight="light" />
+                              </button>
+                              <span className="tnum w-8 text-center text-[0.8125rem] text-ink">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  updateQuantity(
+                                    item.product.id,
+                                    item.selectedSize,
+                                    item.quantity + 1,
+                                  )
+                                }
+                                className="flex h-8 w-8 items-center justify-center text-ink-dim hover:text-ink"
+                                aria-label={`Increase quantity of ${item.product.name}`}
+                              >
+                                <Plus size={15} weight="light" />
+                              </button>
+                            </div>
+
+                            <p className="tnum text-[0.9375rem] text-ink">
+                              {money((item.product.price ?? 0) * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => removeFromCart(item.product.id, item.selectedSize)}
+                          className="h-8 w-8 shrink-0 text-ink-faint transition-colors hover:text-signal-error"
+                          aria-label={`Remove ${item.product.name}`}
+                        >
+                          <Trash size={16} weight="light" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {items.length > 0 && (
+                <div className="shrink-0 border-t border-line p-5">
+                  <fieldset>
+                    <legend className="t-meta mb-3">Where are we delivering</legend>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setArea("beirut")}
+                        aria-pressed={area === "beirut"}
+                        className={`border px-3 py-3 text-left transition-colors ${
+                          area === "beirut"
+                            ? "border-ink bg-ink text-paper"
+                            : "border-line text-ink-dim hover:border-line-strong hover:text-ink"
+                        }`}
+                      >
+                        <span className="block text-[0.8125rem]">Beirut</span>
+                        <span className="tnum t-meta block">$3</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArea("outside")}
+                        aria-pressed={area === "outside"}
+                        className={`border px-3 py-3 text-left transition-colors ${
+                          area === "outside"
+                            ? "border-ink bg-ink text-paper"
+                            : "border-line text-ink-dim hover:border-line-strong hover:text-ink"
+                        }`}
+                      >
+                        <span className="block text-[0.8125rem]">Outside Beirut</span>
+                        <span className="tnum t-meta block">$4</span>
+                      </button>
+                    </div>
+                  </fieldset>
+
+                  {area === "outside" && (
+                    <div className="mt-3">
+                      <label htmlFor="cart-city" className="t-meta mb-1.5 block">
+                        Town or city
+                      </label>
+                      <input
+                        id="cart-city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="Jounieh"
+                        className="field"
+                      />
+                    </div>
+                  )}
+
+                  <dl className="mt-5 flex flex-col gap-2 border-t border-line pt-4 text-[0.875rem]">
+                    <div className="flex justify-between">
+                      <dt className="text-ink-dim">Subtotal</dt>
+                      <dd className="tnum text-ink">{money(subtotal)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-ink-dim">Delivery</dt>
+                      <dd className="tnum text-ink">
+                        {area === null ? "Pick an area" : money(deliveryFee)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between border-t border-line pt-3">
+                      <dt className="text-ink">Total</dt>
+                      <dd className="tnum text-ink">
+                        {area === null ? money(subtotal) : money(total)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <button
+                    onClick={startCheckout}
+                    disabled={area === null}
+                    className="btn btn-primary mt-5 w-full"
+                  >
+                    Continue to delivery details
+                  </button>
+                  {area === null && (
+                    <p className="t-meta mt-2.5 text-center">
+                      Choose a delivery area to continue
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ---- AUTH WALL ---- */}
+          {drawerState === "auth-required" && (
+            <div className="flex flex-1 flex-col items-start justify-center gap-4 px-5">
+              <p className="text-xl text-ink">Sign in to place the order.</p>
+              <p className="t-body text-[0.9375rem]">
+                We attach the order to your account so you can check its status later,
+                and so we have a name and number to deliver to.
+              </p>
+              <button onClick={() => setAuthOpen(true)} className="btn btn-primary mt-2 w-full">
+                Sign in
+              </button>
+              <button onClick={() => setDrawerState("cart")} className="btn btn-ghost w-full">
+                Back to cart
+              </button>
+            </div>
+          )}
+
+          {/* ---- DETAILS ---- */}
+          {drawerState === "details" && (
+            <form onSubmit={placeOrder} aria-busy={placing} className="flex min-h-0 flex-1 flex-col">
+              <fieldset disabled={placing} className="min-h-0 flex-1 overflow-y-auto border-0 p-5">
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label htmlFor="ord-name" className="t-meta mb-1.5 block">
+                      Full name
+                    </label>
+                    <input
+                      id="ord-name"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Nour Khalil"
+                      className="field"
+                      autoComplete="name"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="ord-phone" className="t-meta mb-1.5 block">
+                      Phone
+                    </label>
+                    <input
+                      id="ord-phone"
+                      required
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="03 456 789"
+                      className="field tnum"
+                      autoComplete="tel"
+                    />
+                    <p className="t-meta mt-1.5 normal-case tracking-normal">
+                      The driver calls this number before arriving.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="ord-address" className="t-meta mb-1.5 block">
+                      Delivery address
+                    </label>
+                    <textarea
+                      id="ord-address"
+                      required
+                      rows={3}
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Street, building, floor, and a landmark"
+                      className="field resize-none"
+                      autoComplete="street-address"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="ord-notes" className="t-meta mb-1.5 block">
+                      Notes, optional
+                    </label>
+                    <textarea
+                      id="ord-notes"
+                      rows={2}
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                      placeholder="Anything we should know"
+                      className="field resize-none"
+                    />
+                  </div>
+                </div>
+
+                <dl className="mt-7 flex flex-col gap-2 border-t border-line pt-4 text-[0.875rem]">
+                  <div className="flex justify-between">
+                    <dt className="text-ink-dim">Subtotal</dt>
+                    <dd className="tnum text-ink">{money(subtotal)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-ink-dim">
+                      Delivery, {area === "beirut" ? "Beirut" : city.trim() || "outside Beirut"}
+                    </dt>
+                    <dd className="tnum text-ink">{money(deliveryFee)}</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-line pt-3">
+                    <dt className="text-ink">Total, cash on delivery</dt>
+                    <dd className="tnum text-ink">{money(total)}</dd>
+                  </div>
+                </dl>
+              </fieldset>
+
+              <div className="shrink-0 border-t border-line p-5">
+                {placeError && (
+                  <p
+                    role="alert"
+                    className="mb-3 border border-signal-error/40 bg-signal-error/10 px-3 py-2.5 text-[0.8125rem] text-signal-error"
+                  >
+                    {placeError}
+                  </p>
+                )}
+                <button type="submit" disabled={placing} className="btn btn-primary w-full">
+                  {placing ? "Placing order" : `Place order, ${money(total)}`}
+                </button>
+                <p className="t-meta mt-2.5 text-center normal-case tracking-normal">
+                  We open WhatsApp so you can confirm with us directly.
+                </p>
+              </div>
+            </form>
+          )}
+
+          {/* ---- SUCCESS ---- */}
+          {drawerState === "success" && (
+            <div className="flex flex-1 flex-col justify-center overflow-y-auto px-5 py-8">
+              <div className="flex h-12 w-12 items-center justify-center border border-signal-ok text-signal-ok">
+                <Check size={22} weight="light" />
+              </div>
+              <p className="mt-5 text-xl text-ink">Order saved.</p>
+              <p className="t-body mt-3 text-[0.9375rem]">
+                Send it to us on WhatsApp so we can check your sizes are in stock and
+                agree a delivery time. Nothing is charged until the driver arrives.
+              </p>
+
+              <dl className="mt-6 flex flex-col gap-2 border-t border-line pt-4 text-[0.875rem]">
+                {orderId && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-ink-dim">Reference</dt>
+                    <dd className="tnum truncate text-ink">{orderId.slice(0, 8)}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt className="text-ink-dim">Total due</dt>
+                  <dd className="tnum text-ink">{money(total)}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-7 flex flex-col gap-2">
+                {ownerUrl && (
+                  <>
+                    <a
+                      href={ownerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary w-full"
+                    >
+                      Send the order on WhatsApp
+                    </a>
+                    <p className="t-meta mb-1 text-center normal-case tracking-normal">
+                      If WhatsApp did not open on its own, tap above to send it.
+                    </p>
+                  </>
+                )}
+                <Link href="/orders" className="btn btn-ghost w-full" onClick={handleClose}>
+                  See your orders
+                </Link>
+                <button
+                  onClick={() => {
+                    clearCart()
+                    setDrawerState("cart")
+                    setOrderId(null)
+                    closeCart()
+                  }}
+                  className="btn btn-ghost w-full"
+                >
+                  Continue shopping
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </>
   )
 }

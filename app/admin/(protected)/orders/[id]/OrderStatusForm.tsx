@@ -44,20 +44,20 @@ export default function OrderStatusForm({ orderId, currentStatus }: Props) {
       <select
         value={status}
         onChange={e => setStatus(e.target.value as Order['status'])}
-        className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-gold transition-colors capitalize"
+        className="w-full bg-paper-raised border border-line px-4 py-2.5 text-ink text-sm focus:outline-none focus:border-ink transition-colors capitalize"
       >
         {STATUS_OPTIONS.map(s => (
           <option key={s} value={s} className="capitalize">{s}</option>
         ))}
       </select>
 
-      {error && <p className="text-red-500 text-xs">{error}</p>}
-      {saved && <p className="text-green-600 text-xs">Status updated ✓</p>}
+      {error && <p className="text-signal-error text-xs">{error}</p>}
+      {saved && <p className="text-signal-ok text-xs">Status updated</p>}
 
       <button
         onClick={handleSave}
         disabled={saving || status === currentStatus}
-        className="bg-gold hover:bg-gold-light text-black text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn btn-primary"
       >
         {saving ? 'Saving...' : 'Update Status'}
       </button>
