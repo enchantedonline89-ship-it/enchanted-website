@@ -193,7 +193,7 @@ export default async function ProductPage({
             </p>
 
             <details className="mt-8 border-t border-line pt-4">
-              <summary className="t-meta cursor-pointer text-ink">
+              <summary className="t-meta flex min-h-11 cursor-pointer items-center text-ink">
                 Delivery and returns
               </summary>
               <div className="prose-paper mt-4 text-[0.875rem]">

@@ -300,12 +300,12 @@ export default function CartDrawer() {
                                     item.quantity - 1,
                                   )
                                 }
-                                className="flex h-8 w-8 items-center justify-center text-ink-dim hover:text-ink"
+                                className="flex h-11 w-11 items-center justify-center text-ink-dim hover:text-ink"
                                 aria-label={`Reduce quantity of ${item.product.name}`}
                               >
                                 <Minus size={15} weight="light" />
                               </button>
-                              <span className="tnum w-8 text-center text-[0.8125rem] text-ink">
+                              <span className="tnum w-10 text-center text-[0.875rem] text-ink">
                                 {item.quantity}
                               </span>
                               <button
@@ -316,7 +316,7 @@ export default function CartDrawer() {
                                     item.quantity + 1,
                                   )
                                 }
-                                className="flex h-8 w-8 items-center justify-center text-ink-dim hover:text-ink"
+                                className="flex h-11 w-11 items-center justify-center text-ink-dim hover:text-ink"
                                 aria-label={`Increase quantity of ${item.product.name}`}
                               >
                                 <Plus size={15} weight="light" />
@@ -331,7 +331,7 @@ export default function CartDrawer() {
 
                         <button
                           onClick={() => removeFromCart(item.product.id, item.selectedSize)}
-                          className="h-8 w-8 shrink-0 text-ink-faint transition-colors hover:text-signal-error"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center text-ink-faint transition-colors hover:text-signal-error"
                           aria-label={`Remove ${item.product.name}`}
                         >
                           <Trash size={16} weight="light" />

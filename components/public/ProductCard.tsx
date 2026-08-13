@@ -84,7 +84,10 @@ export default function ProductCard({
 
       <div className="mt-4 flex items-baseline justify-between gap-4">
         <h3 className="text-[0.9375rem] leading-snug text-ink">
-          <Link href={productHref(product)} className="link-grow">
+          <Link
+            href={productHref(product)}
+            className="link-grow inline-flex min-h-11 items-center"
+          >
             {product.name}
           </Link>
         </h3>

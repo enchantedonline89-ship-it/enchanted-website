@@ -444,6 +444,17 @@ a {
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
+  /* A four-column size chart fits at 375px but squashes below it. Let the table
+     scroll inside its own box rather than compressing the numbers or pushing
+     the page sideways. */
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.prose-paper table tbody,
+.prose-paper table thead {
+  display: table;
+  width: 100%;
 }
 .prose-paper th {
   text-align: left;

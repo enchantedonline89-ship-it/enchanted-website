@@ -61,7 +61,7 @@ export default function Footer() {
             <ul className="flex flex-col gap-3">
               {SHOP.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="link-grow text-[0.9375rem] text-ink-dim hover:text-ink">
+                  <Link href={l.href} className="link-grow inline-flex min-h-11 items-center text-[0.9375rem] text-ink-dim hover:text-ink">
                     {l.label}
                   </Link>
                 </li>
@@ -74,7 +74,7 @@ export default function Footer() {
             <ul className="flex flex-col gap-3">
               {HELP.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="link-grow text-[0.9375rem] text-ink-dim hover:text-ink">
+                  <Link href={l.href} className="link-grow inline-flex min-h-11 items-center text-[0.9375rem] text-ink-dim hover:text-ink">
                     {l.label}
                   </Link>
                 </li>
@@ -87,7 +87,7 @@ export default function Footer() {
             <ul className="flex flex-col gap-3">
               {LEGAL.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="link-grow text-[0.9375rem] text-ink-dim hover:text-ink">
+                  <Link href={l.href} className="link-grow inline-flex min-h-11 items-center text-[0.9375rem] text-ink-dim hover:text-ink">
                     {l.label}
                   </Link>
                 </li>

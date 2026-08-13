@@ -63,7 +63,7 @@ export default function ProductBuyBox({
               <button
                 type="button"
                 onClick={() => setGuideOpen(true)}
-                className="t-meta link-grow text-ink-dim hover:text-ink"
+                className="t-meta link-grow inline-flex min-h-11 items-center text-ink-dim hover:text-ink"
               >
                 Size guide
               </button>
@@ -147,22 +147,22 @@ export default function ProductBuyBox({
       )}
 
       <dl className="mt-8 border-t border-line text-[0.8125rem] text-ink-dim">
-        <div className="flex justify-between gap-4 border-b border-line py-3">
+        <div className="flex items-center justify-between gap-4 border-b border-line py-1">
           <dt>Payment</dt>
           <dd className="text-right text-ink">Cash on delivery, no card needed</dd>
         </div>
-        <div className="flex justify-between gap-4 border-b border-line py-3">
+        <div className="flex items-center justify-between gap-4 border-b border-line py-1">
           <dt>Delivery</dt>
           <dd className="tnum text-right text-ink">
-            <Link href="/shipping" className="link-grow">
+            <Link href="/shipping" className="link-grow inline-flex min-h-11 items-center">
               $3 in Beirut, $4 elsewhere in Lebanon
             </Link>
           </dd>
         </div>
-        <div className="flex justify-between gap-4 border-b border-line py-3">
+        <div className="flex items-center justify-between gap-4 border-b border-line py-1">
           <dt>Returns</dt>
           <dd className="tnum text-right text-ink">
-            <Link href="/returns" className="link-grow">
+            <Link href="/returns" className="link-grow inline-flex min-h-11 items-center">
               10 days, unworn with tags
             </Link>
           </dd>

@@ -41,23 +41,30 @@ function loadFromStorage(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  // The server has no localStorage, so the first render must be empty to match
+  // the server HTML. Hydration then happens during the FIRST CLIENT RENDER via
+  // the adjust-state-during-render pattern, not in an effect: setting state
+  // inside an effect makes React commit the empty cart, then immediately
+  // re-render with the real one, which is a visible flash of "0 items" and the
+  // cascading render the lint rule is warning about.
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate from localStorage once on mount
-  useEffect(() => {
-    setItems(loadFromStorage())
+  if (!hydrated && typeof window !== 'undefined') {
     setHydrated(true)
-  }, [])
+    const stored = loadFromStorage()
+    if (stored.length > 0) setItems(stored)
+  }
 
-  // Persist to localStorage whenever items change (skip before hydration)
+  // Persist whenever items change, but never before hydration, or the first
+  // render would overwrite a real saved cart with an empty one.
   useEffect(() => {
     if (!hydrated) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
     } catch {
-      // Storage full or unavailable — silent fail
+      // Storage full or unavailable, e.g. iOS private browsing. Silent by design.
     }
   }, [items, hydrated])
 
