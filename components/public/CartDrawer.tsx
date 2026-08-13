@@ -128,6 +128,7 @@ export default function CartDrawer() {
     setPlaceError(null)
 
     const orderItems = items.map((item) => ({
+      product_id: item.product.id,
       name: item.product.name,
       size: item.selectedSize,
       qty: item.quantity,
@@ -164,6 +165,8 @@ export default function CartDrawer() {
 
       setOrderId(data.id)
 
+      // Server-priced figures, falling back to the local ones only if the
+      // response is somehow shaped differently than expected.
       const ownerPayload: OrderPayload = {
         full_name: fullName.trim(),
         user_email: user.email ?? "",
@@ -172,10 +175,10 @@ export default function CartDrawer() {
         city: area === "outside" ? city.trim() || null : null,
         delivery_address: deliveryAddress.trim(),
         order_notes: orderNotes.trim() || null,
-        items: orderItems,
-        subtotal,
-        delivery_fee: deliveryFee,
-        total,
+        items: Array.isArray(data.items) ? data.items : orderItems,
+        subtotal: typeof data.subtotal === "number" ? data.subtotal : subtotal,
+        delivery_fee: typeof data.delivery_fee === "number" ? data.delivery_fee : deliveryFee,
+        total: typeof data.total === "number" ? data.total : total,
       }
       const url = buildOwnerNotificationURL(ownerPayload)
       setOwnerUrl(url)

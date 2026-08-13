@@ -409,7 +409,9 @@ describe('CartDrawer — order submission', () => {
       order_notes: null,
     })
     expect(payload.items).toEqual([
-      { name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 },
+      {
+        product_id: 'p-stiletto',
+        name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 },
     ])
   })
 

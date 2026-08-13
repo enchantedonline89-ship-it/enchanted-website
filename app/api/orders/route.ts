@@ -34,6 +34,7 @@ setInterval(() => {
 const VALID_AREAS = ['beirut', 'outside']
 
 interface OrderItem {
+  product_id: string
   name: string
   size: string | null
   qty: number
@@ -121,6 +122,9 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
       }
       const it = item as Record<string, unknown>
 
+      if (typeof it.product_id !== 'string' || it.product_id.trim().length === 0 || it.product_id.length > 64) {
+        errors.push({ field: `items[${idx}].product_id`, message: 'Item is missing a product reference' })
+      }
       if (typeof it.name !== 'string' || it.name.trim().length === 0 || it.name.length > 200) {
         errors.push({ field: `items[${idx}].name`, message: 'Item name is invalid' })
       }
@@ -142,25 +146,6 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
   const subtotal = Number(body.subtotal)
   if (!Number.isFinite(subtotal) || subtotal < 0 || subtotal > 100_000) {
     errors.push({ field: 'subtotal', message: 'Subtotal is invalid' })
-  } else if (errors.length === 0 && Array.isArray(body.items)) {
-    // Cross-check subtotal against the submitted line items. Without this, posting
-    // the real cart with `subtotal: 1` was accepted: the order row, the admin screen
-    // and the WhatsApp message all showed the forged figure, and the driver collected
-    // it in cash. Same bug class the delivery_fee check already closed.
-    //
-    // NOTE: this only proves the arithmetic is internally consistent. `items[].price`
-    // is still client-supplied, so an attacker who forges the line prices AND the
-    // subtotal to match still gets through. The complete fix is to re-derive every
-    // price from the products table server-side and ignore the submitted ones. That
-    // needs a reachable database to verify, and the Supabase project is currently
-    // NXDOMAIN, so it is deliberately left as required pre-launch work.
-    const computed = (body.items as Array<Record<string, unknown>>).reduce(
-      (sum, it) => sum + Number(it.price) * Number(it.qty),
-      0,
-    )
-    if (Math.abs(subtotal - computed) > 0.01) {
-      errors.push({ field: 'subtotal', message: 'Subtotal does not match the items' })
-    }
   }
 
   // total — must equal subtotal + delivery_fee (within $0.01 tolerance for floating-point)
@@ -228,17 +213,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: 'mock-order-' + Date.now() })
   }
 
-  // Sanitise — only use explicitly extracted values, never spread raw body
-  const items = (body.items as OrderItem[]).map(i => ({
-    name: String(i.name).trim(),
+  // ─── Server-side pricing ────────────────────────────────────────────────────
+  // Prices are re-derived from the products table and the submitted ones are
+  // discarded. Without this, a caller could post the real cart with forged line
+  // prices and a matching forged subtotal, and the driver would collect the
+  // forged amount in cash. The client is trusted for WHAT and HOW MANY, never
+  // for HOW MUCH.
+  const submitted = (body.items as OrderItem[]).map(i => ({
+    product_id: String(i.product_id).trim(),
     size: i.size ? String(i.size).trim() : null,
     qty: Math.floor(Number(i.qty)),
-    price: Number(i.price),
   }))
 
+  const svc = await createServiceClient()
+  const { data: catalog, error: catalogError } = await svc
+    .from('products')
+    .select('id, name, price, is_active')
+    .in('id', [...new Set(submitted.map(i => i.product_id))])
+
+  if (catalogError) {
+    return NextResponse.json(
+      { error: 'We could not price that order. Please try again.' },
+      { status: 503 },
+    )
+  }
+
+  const byId = new Map((catalog ?? []).map(p => [p.id, p]))
+
+  const items: OrderItem[] = []
+  for (const line of submitted) {
+    const product = byId.get(line.product_id)
+    // Fail closed: an unknown or withdrawn product must not become a $0 line.
+    if (!product || product.is_active === false) {
+      return NextResponse.json(
+        { error: 'One of those pieces is no longer available. Please refresh and try again.' },
+        { status: 409 },
+      )
+    }
+    items.push({
+      product_id: product.id,
+      name: String(product.name),
+      size: line.size,
+      qty: line.qty,
+      price: Number(product.price ?? 0),
+    })
+  }
+
+  const subtotal = Number(
+    items.reduce((sum, i) => sum + i.price * i.qty, 0).toFixed(2),
+  )
+  const deliveryFee = body.area === 'beirut' ? 3 : 4
+  const total = Number((subtotal + deliveryFee).toFixed(2))
+
   try {
-    const supabase = await createServiceClient()
-    const { data, error } = await supabase
+    const { data, error } = await svc
       .from('orders')
       .insert({
         user_id: authenticatedUserId,
@@ -250,11 +278,11 @@ export async function POST(request: NextRequest) {
         delivery_address: String(body.delivery_address).trim(),
         city: body.city ? String(body.city).trim() : null,
         area: body.area,
-        delivery_fee: Number(body.delivery_fee),
+        delivery_fee: deliveryFee,
         order_notes: body.order_notes ? String(body.order_notes).trim() : null,
         items,
-        subtotal: Number(body.subtotal),
-        total: Number(body.total),
+        subtotal,
+        total,
         status: 'pending',
       })
       .select('id')
@@ -266,7 +294,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save order. Please try again.' }, { status: 500 })
     }
 
-    return NextResponse.json({ id: data.id })
+    return NextResponse.json({ id: data.id, items, subtotal, total, delivery_fee: deliveryFee })
   } catch (err) {
     console.error('Order API unexpected error:', err)
     return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 })

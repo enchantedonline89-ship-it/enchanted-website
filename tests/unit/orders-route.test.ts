@@ -8,7 +8,9 @@ const h = vi.hoisted(() => {
   const insert = vi.fn()
   const from = vi.fn()
   const getUser = vi.fn()
-  return { single, select, insert, from, getUser, mockMode: { value: true } }
+  // The catalog the server prices against.
+  const catalog = { rows: [] as Array<Record<string, unknown>>, error: null as unknown }
+  return { single, select, insert, from, getUser, catalog, mockMode: { value: true } }
 })
 
 vi.mock('@/lib/mock-data', () => ({
@@ -59,7 +61,9 @@ function validBody(overrides: Record<string, unknown> = {}) {
     city: null,
     order_notes: null,
     delivery_fee: 3,
-    items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 }],
+    items: [
+      { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 },
+    ],
     subtotal: 179.98,
     total: 182.98,
     ...overrides,
@@ -81,7 +85,21 @@ beforeEach(() => {
   h.single.mockResolvedValue({ data: { id: 'ord-real-1' }, error: null })
   h.select.mockImplementation(() => ({ single: h.single }))
   h.insert.mockImplementation(() => ({ select: h.select }))
-  h.from.mockImplementation(() => ({ insert: h.insert }))
+
+  // Prices the server is expected to trust, deliberately different from the
+  // prices the fixture body submits, so any test that passes proves the server
+  // used ITS numbers and not the client's.
+  h.catalog.rows = [
+    { id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', price: 89.99, is_active: true },
+    { id: 'prod-clip', name: 'Crystal Hair Claw Clip', price: 29.99, is_active: true },
+  ]
+  h.catalog.error = null
+
+  h.from.mockImplementation((table: string) =>
+    table === 'products'
+      ? { select: () => ({ in: async () => ({ data: h.catalog.rows, error: h.catalog.error }) }) }
+      : { insert: h.insert },
+  )
   h.getUser.mockResolvedValue({ data: { user: { id: 'session-user-id' } } })
   h.mockMode.value = true
 })
@@ -105,7 +123,9 @@ describe('POST /api/orders — accepted orders', () => {
   it('accepts an accessory line with size null', async () => {
     const { status } = await post(
       validBody({
-        items: [{ name: 'Crystal Hair Claw Clip', size: null, qty: 1, price: 29.99 }],
+        items: [
+          { product_id: 'prod-clip', name: 'Crystal Hair Claw Clip', size: null, qty: 1, price: 29.99 },
+        ],
         subtotal: 29.99,
         total: 32.99,
       }),
@@ -335,15 +355,19 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
     expect(row.delivery_address).toBe('Hamra Street, Building 4')
   })
 
-  it('re-derives item fields rather than trusting the raw array', async () => {
+  it('rebuilds every item from the catalog, dropping unlisted fields', async () => {
     await post(
       validBody({
-        items: [{ name: '  Stiletto  ', size: '  38  ', qty: 2, price: 89.99, secret: 'x' }],
+        items: [
+          { product_id: 'prod-stiletto', name: '  NOT THE REAL NAME  ', size: '  38  ', qty: 2, price: 1, secret: 'x' },
+        ],
       }),
     )
 
+    // Name and price come from the catalog; only size and qty survive from the
+    // request, and the stray `secret` field never reaches the row.
     expect(insertedRow().items).toEqual([
-      { name: 'Stiletto', size: '38', qty: 2, price: 89.99 },
+      { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 },
     ])
   })
 
@@ -364,7 +388,10 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
 
   it('returns a generic 500 when the Supabase client throws (project unreachable)', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    h.from.mockImplementation(() => {
+    h.from.mockImplementation((table: string) => {
+      if (table === 'products') {
+        return { select: () => ({ in: async () => ({ data: h.catalog.rows, error: null }) }) }
+      }
       throw new Error('getaddrinfo ENOTFOUND xyz.supabase.co')
     })
 
@@ -385,85 +412,97 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
 
 // ─── Subtotal vs line items ───────────────────────────────────────────────────
 
-describe('subtotal is cross-checked against the line items', () => {
+describe('prices are derived server-side, never taken from the client', () => {
   /**
-   * REGRESSION GUARD — app/api/orders/route.ts:141-164.
-   * Before this check existed, posting the real cart with `subtotal: 1` was accepted:
-   * the order row, the admin screen and the WhatsApp message all showed the forged
-   * figure and the driver collected it in cash.
+   * REGRESSION GUARD — app/api/orders/route.ts.
+   * The client is trusted for WHAT and HOW MANY, never for HOW MUCH. Line prices
+   * are re-read from the products table and the submitted ones are discarded, so
+   * a forged price cannot reach the order row, the admin screen, the WhatsApp
+   * message, or the amount the driver collects in cash.
    */
-  it('rejects a subtotal far below the sum of the line items', async () => {
-    // 1 × $89.99 declared as $1.00 → total $4.00 still "matches" subtotal + fee.
+
+  beforeEach(() => {
+    h.mockMode.value = false // exercise the real pricing + insert path
+  })
+
+  it('CLOSED: ignores a forged line price and stores the catalog price', async () => {
     const { status } = await post(
       validBody({
-        items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 }],
+        // A $89.99 stiletto submitted as $1.
+        items: [
+          { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 1 },
+        ],
         subtotal: 1,
         delivery_fee: 3,
         total: 4,
       }),
+      { ip: freshIp() },
     )
-    expect(status).toBe(400)
+
+    expect(status).toBe(200)
+    const row = insertedRow()
+    expect((row.items as Array<{ price: number }>)[0].price).toBe(89.99)
+    expect(row.subtotal).toBe(89.99)
+    expect(row.total).toBe(92.99)
   })
 
-  it('rejects a subtotal of 0 for a cart of paid items', async () => {
+  it('ignores a forged subtotal and total entirely', async () => {
     const { status } = await post(
-      validBody({
-        items: [{ name: 'Sequin Co-Ord Set', size: 'M', qty: 3, price: 179.99 }],
-        subtotal: 0,
-        delivery_fee: 3,
-        total: 3,
-      }),
+      validBody({ subtotal: 1, total: 4 }),
+      { ip: freshIp() },
     )
-    expect(status).toBe(400)
+    expect(status).toBe(200)
+    // Fixture is 2 x $89.99 to Beirut.
+    expect(insertedRow().subtotal).toBe(179.98)
+    expect(insertedRow().total).toBe(182.98)
   })
 
-  it('rejects a subtotal inflated above the line items', async () => {
-    const { status } = await post(
+  it('takes the product name from the catalog, not the request', async () => {
+    await post(
       validBody({
-        items: [{ name: 'Crystal Hair Claw Clip', size: null, qty: 1, price: 29.99 }],
-        subtotal: 2999,
-        delivery_fee: 3,
-        total: 3002,
+        items: [
+          { product_id: 'prod-clip', name: 'FREE GIFT', size: null, qty: 1, price: 0 },
+        ],
       }),
+      { ip: freshIp() },
     )
-    expect(status).toBe(400)
+    const items = insertedRow().items as Array<{ name: string; price: number }>
+    expect(items[0].name).toBe('Crystal Hair Claw Clip')
+    expect(items[0].price).toBe(29.99)
   })
 
-  it('accepts a subtotal that does equal the sum of the line items', async () => {
+  it('rejects an unknown product rather than pricing it at zero', async () => {
     const { status } = await post(
       validBody({
         items: [
-          { name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 },
-          { name: 'Crystal Hair Claw Clip', size: null, qty: 1, price: 29.99 },
+          { product_id: 'prod-does-not-exist', name: 'Ghost', size: '38', qty: 1, price: 5 },
         ],
-        subtotal: 209.97,
-        delivery_fee: 3,
-        total: 212.97,
       }),
+      { ip: freshIp() },
     )
-    expect(status).toBe(200)
+    expect(status).toBe(409)
   })
 
-  /**
-   * OPEN HOLE — app/api/orders/route.ts:151-156 (acknowledged in-source).
-   * The cross-check only proves the arithmetic is internally consistent.
-   * `items[].price` is still client-supplied and is never re-derived from the
-   * products table, so forging the line price AND a matching subtotal is accepted.
-   * This test proves the hole is real and must start failing once prices are
-   * resolved server-side. Blocked on the Supabase project being reachable.
-   */
-  it('OPEN HOLE: accepts forged line prices when the subtotal is forged to match', async () => {
-    const { status, json } = await post(
-      validBody({
-        // A $179.99 co-ord set bought for $1.
-        items: [{ name: 'Sequin Co-Ord Set', size: 'M', qty: 1, price: 1 }],
-        subtotal: 1,
-        delivery_fee: 3,
-        total: 4,
-      }),
+  it('rejects a withdrawn product', async () => {
+    h.catalog.rows = [
+      { id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', price: 89.99, is_active: false },
+    ]
+    const { status } = await post(validBody(), { ip: freshIp() })
+    expect(status).toBe(409)
+  })
+
+  it('fails closed when the catalog cannot be read', async () => {
+    h.catalog.error = { message: 'unreachable' }
+    const { status } = await post(validBody(), { ip: freshIp() })
+    expect(status).toBe(503)
+  })
+
+  it('rejects an item with no product reference at all', async () => {
+    const { status } = await post(
+      validBody({ items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 }] }),
+      { ip: freshIp() },
     )
-    expect(status).toBe(200)
-    expect(json.id).toBeTruthy()
+    expect(status).toBe(400)
   })
 })
 
