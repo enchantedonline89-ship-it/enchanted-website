@@ -1,10 +1,7 @@
-import * as Sentry from "@sentry/nextjs"
-import posthog from "posthog-js"
-
 /**
  * Client-side instrumentation. Next.js loads this file automatically on the
- * browser, before the app renders, which is why both SDKs live here rather than
- * inside a provider component.
+ * browser, before the app renders. The SDKs are dynamically imported only when
+ * configured so analytics cannot tax every shopper's initial route by default.
  *
  * Both are strictly opt-in: with no environment variables set, neither sends
  * anything and the shop behaves exactly as it does today.
@@ -13,40 +10,34 @@ import posthog from "posthog-js"
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
 
-Sentry.init({
-  dsn: SENTRY_DSN,
-  enabled: Boolean(SENTRY_DSN),
-
-  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
-
-  // Session replay is genuinely useful for a checkout nobody can watch over the
-  // shoulder of, but it records the screen. Everything is masked by default and
-  // only error sessions are kept.
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1.0,
-  integrations: [
-    Sentry.replayIntegration({
-      maskAllText: true,
-      maskAllInputs: true,
-      blockAllMedia: false,
-    }),
-  ],
-
-  // Customers type their name, phone and address into this site.
-  sendDefaultPii: false,
-
-  ignoreErrors: [
-    "AbortError",
-    "ResizeObserver loop limit exceeded",
-    "ResizeObserver loop completed with undelivered notifications",
-    // Instagram and Facebook in-app browsers inject scripts that throw.
-    "Non-Error promise rejection captured",
-  ],
-})
+if (SENTRY_DSN) {
+  void import("@sentry/nextjs").then((Sentry) => {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+      environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 1.0,
+      integrations: [
+        Sentry.replayIntegration({
+          maskAllText: true,
+          maskAllInputs: true,
+          blockAllMedia: false,
+        }),
+      ],
+      sendDefaultPii: false,
+      ignoreErrors: [
+        "AbortError",
+        "ResizeObserver loop limit exceeded",
+        "ResizeObserver loop completed with undelivered notifications",
+        "Non-Error promise rejection captured",
+      ],
+    })
+  })
+}
 
 if (POSTHOG_KEY) {
-  posthog.init(POSTHOG_KEY, {
+  void import("posthog-js").then(({ default: posthog }) => posthog.init(POSTHOG_KEY, {
     // Same-origin proxy. Keeps analytics working behind ad blockers and means
     // the strict CSP needs no third-party connect-src entry. See next.config.ts.
     api_host: "/atelier",
@@ -67,7 +58,16 @@ if (POSTHOG_KEY) {
       maskTextSelector: "[data-ph-mask]",
     },
     persistence: "localStorage+cookie",
-  })
+  }))
 }
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
+type RouterTransitionArgs = Parameters<
+  (typeof import("@sentry/nextjs"))["captureRouterTransitionStart"]
+>
+
+export function onRouterTransitionStart(...args: RouterTransitionArgs) {
+  if (!SENTRY_DSN) return
+  void import("@sentry/nextjs").then((Sentry) => {
+    Sentry.captureRouterTransitionStart(...args)
+  })
+}

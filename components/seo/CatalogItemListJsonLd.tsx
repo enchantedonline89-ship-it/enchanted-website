@@ -1,6 +1,8 @@
 import JsonLd from "./JsonLd"
 import { SITE_NAME } from "./site"
 import type { Product } from "@/types"
+import { productHref } from "@/lib/product-url"
+import { absoluteUrl } from "./site"
 
 /**
  * Represents the catalog grid on the homepage as an ItemList. Pass the same
@@ -34,6 +36,7 @@ export default function CatalogItemListJsonLd({ products }: { products: Product[
       item: {
         "@type": "Product",
         name: product.name,
+        url: absoluteUrl(productHref(product)),
         brand: { "@type": "Brand", name: SITE_NAME },
         ...(product.image_url ? { image: product.image_url } : {}),
         ...(product.category?.name ? { category: product.category.name } : {}),

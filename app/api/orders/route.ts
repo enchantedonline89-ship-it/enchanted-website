@@ -80,7 +80,10 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
     errors.push({ field: 'area', message: 'Area must be "beirut" or "outside"' })
   }
 
-  // city (optional but constrained when present)
+  // city (required outside Beirut, otherwise optional but constrained)
+  if (body.area === 'outside' && (typeof body.city !== 'string' || body.city.trim().length < 2)) {
+    errors.push({ field: 'city', message: 'Town or city is required outside Beirut' })
+  }
   if (body.city !== undefined && body.city !== null) {
     if (typeof body.city !== 'string' || body.city.length > 100) {
       errors.push({ field: 'city', message: 'City name is too long' })
@@ -205,8 +208,11 @@ export async function POST(request: NextRequest) {
   // createServiceClient() bypasses RLS, so we must resolve the real user ourselves
   // to prevent callers from associating orders with arbitrary account IDs.
   const userClient = await createClient()
-  const { data: { user: sessionUser } } = await userClient.auth.getUser()
-  const authenticatedUserId = sessionUser?.id ?? null
+  const { data: { user: sessionUser }, error: authError } = await userClient.auth.getUser()
+  if (authError || !sessionUser?.id || !sessionUser.email) {
+    return NextResponse.json({ error: 'Sign in to place an order.' }, { status: 401 })
+  }
+  const authenticatedUserId = sessionUser.id
 
   // In mock mode, return a fake order ID
   if (isSupabaseMockMode()) {
@@ -228,7 +234,7 @@ export async function POST(request: NextRequest) {
   const svc = await createServiceClient()
   const { data: catalog, error: catalogError } = await svc
     .from('products')
-    .select('id, name, price, is_active')
+    .select('id, name, price, sizes, is_active')
     .in('id', [...new Set(submitted.map(i => i.product_id))])
 
   if (catalogError) {
@@ -250,12 +256,34 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       )
     }
+    if (product.price == null || !Number.isFinite(Number(product.price)) || Number(product.price) < 0) {
+      return NextResponse.json(
+        { error: 'One of those pieces is not available to order online yet.' },
+        { status: 409 },
+      )
+    }
+
+    const allowedSizes = Array.isArray(product.sizes)
+      ? product.sizes.map((size: unknown) => String(size).trim()).filter(Boolean)
+      : []
+    if (allowedSizes.length > 0 && (!line.size || !allowedSizes.includes(line.size))) {
+      return NextResponse.json(
+        { error: 'One of the selected sizes is no longer available. Please choose again.' },
+        { status: 409 },
+      )
+    }
+    if (allowedSizes.length === 0 && line.size !== null) {
+      return NextResponse.json(
+        { error: 'That piece does not use a size selection. Please refresh and try again.' },
+        { status: 409 },
+      )
+    }
     items.push({
       product_id: product.id,
       name: String(product.name),
       size: line.size,
       qty: line.qty,
-      price: Number(product.price ?? 0),
+      price: Number(product.price),
     })
   }
 
@@ -272,7 +300,7 @@ export async function POST(request: NextRequest) {
         user_id: authenticatedUserId,
         // Taken from the verified session, never from the request body: a customer
         // could otherwise stamp another person's address on her own order.
-        user_email: (sessionUser?.email ?? String(body.user_email)).trim().toLowerCase(),
+        user_email: sessionUser.email.trim().toLowerCase(),
         full_name: String(body.full_name).trim(),
         phone: String(body.phone).trim(),
         delivery_address: String(body.delivery_address).trim(),

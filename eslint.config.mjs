@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     ".claude/**",
     ".agents/**",
     "node_modules/**",
+    "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

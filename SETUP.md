@@ -1,138 +1,97 @@
-# Enchanted Style — Setup & Deployment Guide
+# Enchanted Style — Setup and deployment
 
-## 1. Supabase Project Setup
+## 1. Create Supabase
 
-### Create project
-1. Go to [supabase.com](https://supabase.com) → New Project
-2. Name it `enchanted-style`, choose a strong DB password, pick the region closest to Lebanon (e.g. EU West)
+Create a Supabase project in a region appropriate for customers in Lebanon.
+In the SQL Editor, run these files in order:
 
-### Run the database schema
-1. Supabase Dashboard → **SQL Editor** → New query
-2. Copy the entire contents of `supabase/schema.sql` and run it
-3. This creates: `categories`, `products`, `admin_logs` tables + RLS policies + seed data
+1. `supabase/schema.sql`
+2. `supabase/product-detail-migration.sql`
+3. `supabase/orders-migration.sql`
+4. `supabase/admin-rls-ensure.sql`
+5. `supabase/analytics-views.sql`
 
-### Disable public sign-ups (CRITICAL)
-1. Supabase Dashboard → **Authentication → Providers → Email**
-2. Toggle **"Enable sign ups"** → **OFF**
-3. This ensures only manually-created admin accounts can log in
+The final two files are the canonical security and analytics definitions and
+are safe to re-run. The analytics script deliberately does not refresh its
+materialized view inside order transactions; refresh it from the protected
+admin dashboard or a scheduled job.
 
-### Create admin account
-1. Supabase Dashboard → **Authentication → Users → Add user**
-2. Enter your email and a strong password
-3. This is your admin login for `/admin`
+Keep customer sign-ups enabled under Authentication > Providers > Email.
+Checkout requires a verified customer account. If Google OAuth is enabled, add
+the deployed `/auth/callback` URL to the provider redirect allowlist.
 
-### Create storage bucket
-1. Supabase Dashboard → **Storage → New bucket**
-2. Name: `product-images`
-3. Toggle **Public bucket** → ON
-4. Click Create, then go to **Policies** and add:
-   - SELECT: allow `anon` and `authenticated` (public reads)
-   - INSERT: allow `authenticated` only (admin uploads)
+Create the admin account as `Enchantedonline89@gmail.com`. The current RLS
+policies are pinned to this address. Changing it requires updating and re-running
+`supabase/admin-rls-ensure.sql` as well as changing the application environment
+variables.
 
-### Get your API keys
-1. Supabase Dashboard → **Settings → API**
-2. Copy: Project URL, anon/public key, service_role key (keep secret!)
+Create a public Storage bucket named `product-images`, then run
+`supabase/admin-rls-ensure.sql`. Its policies allow public reads but restrict
+INSERT, UPDATE, and DELETE to the named admin. Never grant uploads to every
+authenticated customer.
 
----
+## 2. Configure the application
 
-## 2. Local Development
-
-### Fill in environment variables
-Edit `.env.local` and replace the placeholder values:
+Copy `.env.example` to `.env.local` and set at least:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+ADMIN_EMAIL=Enchantedonline89@gmail.com
+NEXT_PUBLIC_ADMIN_EMAIL=Enchantedonline89@gmail.com
 ```
 
-### Add your logo
-- Drop your logo file as `public/logo.png`
-- Recommended: PNG with transparent background, at least 300px wide
+The service-role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
+Keep `ENABLE_MOCK_CATALOG=false` on the customer-facing deployment so a missing
+backend fails closed instead of advertising demo inventory.
 
-### Start the dev server
-```bash
+Install and verify locally:
+
+```powershell
+npm install
+npm run lint
+npm test
+npx tsc --noEmit
+npm run build
 npm run dev
 ```
 
-- Public catalog: http://localhost:3000
-- Admin panel: http://localhost:3000/admin/login
-
----
+The shop is at `http://localhost:3000`; admin login is at
+`http://localhost:3000/admin/login`.
 
 ## 3. Deploy to Vercel
 
-### Option A: GitHub → Vercel (recommended)
-1. Push this repo to GitHub:
-   ```bash
-   git add .
-   git commit -m "Initial Enchanted Style build"
-   git remote add origin https://github.com/YOUR_USERNAME/enchanted
-   git push -u origin main
-   ```
-2. Go to [vercel.com](https://vercel.com) → New Project → Import from GitHub
-3. Select the `enchanted` repo
-4. In **Environment Variables**, add all 3 vars from your `.env.local`
-5. Click **Deploy**
+Import the Git repository into Vercel and add all five required environment
+variables above for Production and Preview. Optional Sentry and PostHog values
+are documented in `.env.example`. Deploy only after the production build passes.
 
-### Option B: Vercel CLI
-```bash
-npm i -g vercel
-vercel
-# Follow the prompts, then:
+If using the CLI:
+
+```powershell
 vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add SUPABASE_SERVICE_ROLE_KEY
+vercel env add ADMIN_EMAIL
+vercel env add NEXT_PUBLIC_ADMIN_EMAIL
 vercel --prod
 ```
 
----
+## 4. Production verification
 
-## 4. Post-Deployment Checklist
+- The catalog shows only live Supabase inventory.
+- A customer can sign up, choose a valid size, place one order, and see it in order history.
+- The WhatsApp handoff contains the same server-priced items and total.
+- The owner can create/edit/delete a product and the audit log records the change.
+- A signed-out visitor is redirected away from protected admin and order pages.
+- A normal customer cannot write catalog rows or upload product images.
+- An order insert and status update both succeed before analytics are refreshed.
+- Manual analytics refresh succeeds and the dashboard reflects the test order.
+- `/sitemap.xml` includes active product URLs; admin and reset pages are noindex.
+- Phone (390px), tablet (768/820px), and desktop layouts have no horizontal overflow.
 
-- [ ] Visit your Vercel URL — hero loads, 3D gems react to mouse
-- [ ] Products grid displays with Unsplash images
-- [ ] WhatsApp buttons open correct chat with pre-filled message
-- [ ] Go to `/admin/login` — login with your Supabase admin credentials
-- [ ] Add a test product via admin — appears on catalog
-- [ ] Upload product image — appears in Supabase Storage
-- [ ] Edit product — audit log records the change
-- [ ] Delete product — audit log records the deletion
-- [ ] Try accessing `/admin/dashboard` while logged out → redirected to login ✓
+## 5. Custom domain
 
----
-
-## 5. Adding Your Logo Colors
-
-Once your logo is uploaded, to extract the brand colors and update the theme:
-
-1. Open `app/globals.css`
-2. In the `@theme inline` block, update:
-   ```css
-   --color-gold: #YOUR_BRAND_GOLD;
-   --color-gold-light: #YOUR_BRAND_GOLD_LIGHT;
-   ```
-3. Redeploy
-
----
-
-## 6. Custom Domain (Optional)
-
-1. Vercel Dashboard → Your project → **Settings → Domains**
-2. Add your domain (e.g. `enchantedstyle.com`)
-3. Follow DNS instructions from Vercel
-4. SSL certificate is automatic
-
----
-
-## Tech Stack Reference
-| Layer | Technology | Notes |
-|---|---|---|
-| Framework | Next.js 16 (App Router) | Deployed on Vercel |
-| Database | Supabase PostgreSQL | Free tier |
-| Auth | Supabase Auth | Email/password |
-| Storage | Supabase Storage | Product images |
-| 3D/WebGL | Three.js | Hero section |
-| Animations | GSAP + ScrollTrigger | Scroll reveals |
-| Styling | Tailwind CSS v4 | Dark glam theme |
-| Fonts | Playfair Display + DM Sans | Google Fonts |
+Add the domain in Vercel, follow its DNS instructions, then update the single
+`SITE_URL` value in `components/seo/site.ts` and the OAuth redirect allowlists.
+Vercel provisions TLS automatically.

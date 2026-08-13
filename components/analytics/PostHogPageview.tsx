@@ -2,7 +2,6 @@
 
 import { useEffect } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import posthog from "posthog-js"
 
 /**
  * The App Router does not reload the document on client navigation, so PostHog's
@@ -17,13 +16,17 @@ export default function PostHogPageview() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!posthog.__loaded) return
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return
 
     let url = window.origin + pathname
     const qs = searchParams.toString()
     if (qs) url += `?${qs}`
 
-    posthog.capture("$pageview", { $current_url: url })
+    void import("posthog-js").then(({ default: posthog }) => {
+      if (posthog.__loaded) {
+        posthog.capture("$pageview", { $current_url: url })
+      }
+    })
   }, [pathname, searchParams])
 
   return null

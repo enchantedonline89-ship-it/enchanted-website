@@ -46,7 +46,13 @@ export async function DELETE(request: NextRequest) {
   const service = await createServiceClient()
 
   // Delete user's orders
-  await service.from('orders').delete().eq('user_id', user.id)
+  const { error: orderDeleteError } = await service.from('orders').delete().eq('user_id', user.id)
+  if (orderDeleteError) {
+    return NextResponse.json(
+      { error: 'Failed to remove your order data. Your account was not deleted.' },
+      { status: 500 },
+    )
+  }
 
   // Delete the user account
   const { error: deleteError } = await service.auth.admin.deleteUser(user.id)

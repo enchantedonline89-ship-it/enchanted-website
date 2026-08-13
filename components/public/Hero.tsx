@@ -12,24 +12,25 @@ import type { ReactNode } from "react"
  *
  * Desktop: side by side, type left and gown right, where there is room for both.
  *
- * Either way the gown is a plain server-rendered <Image> with `priority`, so it
+ * Either way the gown is one plain server-rendered <Image> with `priority`, so it
  * IS the LCP element and paints without waiting for JavaScript. `visual` carries
  * the WebGL dust on top and is purely additive.
  */
 export default function Hero({ visual }: { visual?: ReactNode }) {
   return (
-    <section className="relative overflow-hidden bg-paper lg:flex lg:min-h-[88dvh] lg:items-center">
-      {/* Desktop only: the gown sits behind the type, on the right. */}
+    <section className="relative flex flex-col overflow-hidden bg-paper lg:min-h-[88dvh] lg:justify-center">
+      {/* One responsive LCP image. It is in flow after the copy on phones and
+          becomes an absolute right-hand composition on desktop. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-[2%] hidden w-[46%] lg:block"
+        className="pointer-events-none relative order-2 mx-auto mt-10 aspect-[897/1280] w-[86%] max-w-sm lg:absolute lg:inset-y-0 lg:right-[2%] lg:mt-0 lg:w-[46%] lg:max-w-none"
       >
         <Image
           src="/brand/hero.webp"
           alt=""
           fill
           priority
-          sizes="46vw"
+          sizes="(max-width: 1023px) 86vw, 46vw"
           className="anim-settle object-contain"
         />
       </div>
@@ -37,7 +38,7 @@ export default function Hero({ visual }: { visual?: ReactNode }) {
       {/* Gold dust, over everything */}
       <div className="pointer-events-none absolute inset-0">{visual}</div>
 
-      <div className="relative mx-auto w-full max-w-[1440px] px-5 pt-24 lg:px-10 lg:pb-24">
+      <div className="relative order-1 mx-auto w-full max-w-[1440px] px-5 pt-24 lg:px-10 lg:pb-24">
         <h1 className="t-display max-w-[24ch] text-ink">
           <span className="mask-line">
             <span>Dressed for the evenings </span>
@@ -61,20 +62,6 @@ export default function Hero({ visual }: { visual?: ReactNode }) {
         </div>
       </div>
 
-      {/* Phone only: the whole gown, under the words, nothing cropped. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none relative mx-auto mt-10 aspect-[897/1280] w-[86%] max-w-sm lg:hidden"
-      >
-        <Image
-          src="/brand/hero.webp"
-          alt=""
-          fill
-          priority
-          sizes="86vw"
-          className="anim-settle object-contain"
-        />
-      </div>
     </section>
   )
 }

@@ -118,46 +118,28 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY order_analytics;
+  REFRESH MATERIALIZED VIEW order_analytics;
 END;
 $$;
 
 -- ── 5. Trigger wrapper (must return trigger, not void) ───────
-CREATE OR REPLACE FUNCTION trg_fn_refresh_order_analytics()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY order_analytics;
-  RETURN NULL;
-END;
-$$;
-
 -- ── 6. Auto-refresh trigger on orders ───────────────────────
+-- Remove the legacy synchronous refresh trigger. Order writes must not depend
+-- on analytics maintenance succeeding; refresh explicitly or on a schedule.
 DROP TRIGGER IF EXISTS trg_refresh_analytics ON orders;
 
-CREATE TRIGGER trg_refresh_analytics
-  AFTER INSERT OR UPDATE ON orders
-  FOR EACH STATEMENT
-  EXECUTE FUNCTION trg_fn_refresh_order_analytics();
+DROP FUNCTION IF EXISTS trg_fn_refresh_order_analytics();
 
 -- ── 7. Lock down execution ──────────────────────────────────
 -- PostgreSQL grants EXECUTE on new functions to PUBLIC by default, and PostgREST
 -- exposes them as RPC endpoints. Without these REVOKEs, anyone holding only the
 -- public anon key could POST /rest/v1/rpc/refresh_order_analytics and invoke a
 -- definer-rights function directly, making the admin gate on the Next.js route
--- decorative. The trigger still fires internally; only external callers are cut off.
+-- decorative. Only the service-role-backed admin route may invoke it.
 REVOKE EXECUTE ON FUNCTION refresh_order_analytics() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION trg_fn_refresh_order_analytics() FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION refresh_order_analytics() TO service_role;
 
 -- ── VERIFY BEFORE DEPLOYING ─────────────────────────────────
--- REFRESH MATERIALIZED VIEW CONCURRENTLY cannot run inside a transaction block,
--- and both a PL/pgSQL function body and a trigger always are one. This may raise
--- SQLSTATE 25001 on every order insert, which would fail checkout at the database
--- layer. This could not be verified here because the Supabase project no longer
--- resolves. Run one INSERT against a live database and confirm before launch. If
--- it does raise, drop the trigger and refresh on a schedule (pg_cron) instead.
+-- After applying, verify one order insert, one status update, and one protected
+-- manual refresh against the live database.

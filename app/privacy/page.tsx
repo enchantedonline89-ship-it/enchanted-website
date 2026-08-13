@@ -59,8 +59,10 @@ export default function PrivacyPage() {
               delivery address, and order details you provide at checkout.
             </li>
             <li>
-              <strong className="text-ink">Usage data:</strong> Standard server logs
-              (IP address, browser type, pages visited) collected automatically.
+              <strong className="text-ink">Usage and diagnostics:</strong> Standard
+              server logs (IP address, browser type, pages visited). When analytics or
+              error monitoring is enabled, we may also collect page interactions and
+              masked diagnostic replays. Checkout text and form inputs are masked.
             </li>
           </ul>
         </section>
@@ -110,8 +112,10 @@ export default function PrivacyPage() {
         <section>
           <h2>Cookies</h2>
           <p>
-            We use only essential cookies for authentication (session token). We do not use
-            tracking or advertising cookies.
+            We use essential cookies for authentication. If product analytics is enabled,
+            it also stores a first-party identifier in a cookie and local storage so we can
+            understand page visits and clicks. We do not use advertising cookies or sell
+            this data.
           </p>
         </section>
 

@@ -10,49 +10,12 @@ import Footer from "@/components/public/Footer"
 import WhatsAppFloat from "@/components/public/WhatsAppFloat"
 import CartDrawer from "@/components/public/CartDrawer"
 import CatalogItemListJsonLd from "@/components/seo/CatalogItemListJsonLd"
-import { Product, Category } from "@/types"
-import { mockProducts, mockCategories, isSupabaseMockMode } from "@/lib/mock-data"
+import { getCatalog } from "@/lib/catalog"
 
 export const revalidate = 3600
 
-async function loadCatalog(): Promise<{ products: Product[]; categories: Category[] }> {
-  if (isSupabaseMockMode()) {
-    return { products: mockProducts, categories: mockCategories }
-  }
-
-  // A configured but unreachable backend should not render an empty shop.
-  try {
-    const { createClient } = await import("@/lib/supabase/server")
-    const supabase = await createClient()
-
-    const [{ data: dbProducts }, { data: dbCategories }] = await Promise.all([
-      supabase
-        .from("products")
-        .select("*, category:categories(id, name, slug)")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-    ])
-
-    if (!dbProducts?.length) {
-      return { products: mockProducts, categories: mockCategories }
-    }
-    return {
-      products: dbProducts as Product[],
-      categories: (dbCategories ?? []) as Category[],
-    }
-  } catch {
-    return { products: mockProducts, categories: mockCategories }
-  }
-}
-
 export default async function HomePage() {
-  const { products, categories } = await loadCatalog()
+  const { products, categories, source } = await getCatalog()
 
   const newArrivals = [...products]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -67,7 +30,11 @@ export default async function HomePage() {
         <Hero visual={<HeroCanvas />} />
         <DeliveryBand />
         <NewArrivals products={newArrivals} />
-        <ProductGrid products={products} categories={categories} />
+        <ProductGrid
+          products={products}
+          categories={categories}
+          unavailable={source === "unavailable"}
+        />
 
         {/* Asymmetric split. Used once on the page. */}
         <section id="story" className="scroll-mt-[68px] border-t border-line">

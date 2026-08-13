@@ -8,9 +8,11 @@ import type { Category, Product } from "@/types"
 export default function ProductGrid({
   products,
   categories,
+  unavailable = false,
 }: {
   products: Product[]
   categories: Category[]
+  unavailable?: boolean
 }) {
   const [active, setActive] = useState("all")
 
@@ -44,20 +46,25 @@ export default function ProductGrid({
 
         {visible.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-24">
-            <p className="t-section text-ink-dim">Nothing in here yet.</p>
-            <p className="t-body">
-              This category has no pieces in stock right now. New arrivals land most
-              weeks, so try another category or check back shortly.
+            <p className="t-section text-ink-dim">
+              {unavailable ? "The catalog is temporarily unavailable." : "Nothing in here yet."}
             </p>
-            <button onClick={() => setActive("all")} className="btn btn-ghost mt-2">
-              See everything
-            </button>
+            <p className="t-body">
+              {unavailable
+                ? "Please try again shortly or message us on WhatsApp for current availability."
+                : "This category has no pieces in stock right now. New arrivals land most weeks, so try another category or check back shortly."}
+            </p>
+            {!unavailable && active !== "all" && (
+              <button onClick={() => setActive("all")} className="btn btn-ghost mt-2">
+                See everything
+              </button>
+            )}
           </div>
         ) : (
           <ul className="mt-12 grid grid-cols-2 gap-x-4 gap-y-14 md:grid-cols-3 md:gap-x-6 lg:gap-x-8 lg:gap-y-20">
-            {visible.map((product, i) => (
+            {visible.map((product) => (
               <li key={product.id}>
-                <ProductCard product={product} priority={i < 3} />
+                <ProductCard product={product} />
               </li>
             ))}
           </ul>

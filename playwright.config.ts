@@ -30,7 +30,26 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile-safari', use: { ...devices['iPhone 13'] } },
+    {
+      name: 'api',
+      testMatch: /orders-api\.spec\.ts/,
+      fullyParallel: false,
+      workers: 1,
+    },
+    {
+      name: 'chromium',
+      testIgnore: /orders-api\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-safari',
+      testIgnore: /orders-api\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+    },
+    {
+      name: 'tablet',
+      testIgnore: /orders-api\.spec\.ts/,
+      use: { ...devices['iPad (gen 7)'] },
+    },
   ],
 })

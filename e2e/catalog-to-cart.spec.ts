@@ -78,4 +78,14 @@ test.describe('Catalog and cart', () => {
 
     await expect(page.getByRole('dialog', { name: /sign in to order/i })).toBeVisible()
   })
+
+  test('mobile hash navigation closes the menu drawer', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'mobile navigation only')
+    await page.getByRole('button', { name: /open menu/i }).click()
+    const menu = page.getByRole('dialog', { name: 'Menu' })
+    await expect(menu).toBeVisible()
+    await menu.getByRole('link', { name: 'Shop' }).click()
+    await expect(menu).toBeHidden()
+    await expect(page).toHaveURL(/#catalog$/)
+  })
 })

@@ -28,7 +28,12 @@ export default function OrganizationJsonLd() {
         "@id": `${SITE_URL}/#organization`,
         name: SITE_NAME,
         url: SITE_URL,
-        logo: absoluteUrl("/logo.svg"),
+        logo: {
+          "@type": "ImageObject",
+          url: absoluteUrl("/brand/logo-mark-512.png"),
+          width: 512,
+          height: 512,
+        },
         sameAs: [INSTAGRAM_URL],
         contactPoint: {
           "@type": "ContactPoint",

@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import ImageLightbox from "./ImageLightbox"
+import { productHref } from "@/lib/product-url"
 import type { Product } from "@/types"
 
 /**
@@ -57,7 +59,11 @@ export default function NewArrivals({ products }: { products: Product[] }) {
                 )}
               </button>
               <div className="mt-4 flex items-baseline justify-between gap-4">
-                <p className="text-[0.9375rem] leading-snug text-ink">{product.name}</p>
+                <p className="text-[0.9375rem] leading-snug text-ink">
+                  <Link href={productHref(product)} className="link-grow">
+                    {product.name}
+                  </Link>
+                </p>
                 <p className="tnum shrink-0 text-[0.9375rem] text-ink-dim">
                   {product.price != null ? `$${product.price.toFixed(2)}` : "Ask"}
                 </p>

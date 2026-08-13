@@ -41,6 +41,9 @@ export default async function ProductsPage() {
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     {p.image_url && (
+                      // Admin accepts owner-supplied HTTPS hosts that cannot be
+                      // safely enumerated in next/image remotePatterns.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.image_url} alt={p.name} className="w-10 h-10 object-cover flex-shrink-0 bg-paper-raised" />
                     )}
                     <div>

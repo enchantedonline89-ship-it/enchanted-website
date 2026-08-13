@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 import { SITE_URL } from "@/components/seo/site"
-import { mockProducts, mockCategories } from "@/lib/mock-data"
+import { getCatalog } from "@/lib/catalog"
+import { productHref } from "@/lib/product-url"
 
 // Mirrors the visible "Last updated March 2026" copy shown on the policy
 // pages (PageShell's meta prop). Keep this in sync if that copy changes.
@@ -11,16 +12,29 @@ const POLICY_LAST_UPDATED = new Date("2026-03-01")
 // routes are listed below; /admin, /auth, and /orders are gated (see
 // proxy.ts) and are excluded, not just noindexed, so nothing sends a
 // crawler to a URL that only ever redirects it away.
-function catalogLastModified(): Date {
-  const stamps = [...mockProducts, ...mockCategories].map((r) => new Date(r.updated_at).getTime())
-  return stamps.length ? new Date(Math.max(...stamps)) : new Date()
-}
+const SITE_LAST_UPDATED = new Date("2026-08-12")
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { products, categories } = await getCatalog()
+  const stamps = [...products, ...categories]
+    .map((row) => new Date(row.updated_at).getTime())
+    .filter(Number.isFinite)
+  const catalogLastModified = stamps.length
+    ? new Date(Math.max(...stamps))
+    : SITE_LAST_UPDATED
+
+  const productEntries: MetadataRoute.Sitemap = products.map((product) => ({
+    url: new URL(productHref(product), SITE_URL).toString(),
+    lastModified: new Date(product.updated_at),
+    changeFrequency: "weekly",
+    priority: 0.8,
+    images: product.image_url ? [product.image_url] : undefined,
+  }))
+
   return [
     {
       url: SITE_URL,
-      lastModified: catalogLastModified(),
+      lastModified: catalogLastModified,
       changeFrequency: "daily",
       priority: 1,
     },
@@ -60,5 +74,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    ...productEntries,
   ]
 }

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { X, UploadSimple, CircleNotch } from '@phosphor-icons/react/ssr'
-import { createClient } from '@/lib/supabase/client'
+import { uploadProductImage } from '@/lib/upload-image'
 
 interface Props {
   value: string
@@ -18,37 +18,11 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file')
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be smaller than 5MB')
-      return
-    }
-
     setUploading(true)
     setError(null)
 
     try {
-      const supabase = createClient()
-      const ext = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { upsert: false })
-
-      if (uploadError) throw uploadError
-
-      const { data } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName)
-
-      onChange(data.publicUrl)
+      onChange(await uploadProductImage(file))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -63,6 +37,9 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
       {/* Preview */}
       {value && (
         <div className="relative w-full h-48 overflow-hidden border border-line bg-paper-raised">
+          {/* Preview URLs may be freshly pasted or local blobs; using the browser
+              image element avoids rejecting an owner-selected host before save. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Preview" className="w-full h-full object-cover" />
           <button
             type="button"
@@ -119,7 +96,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         onChange={handleUpload}
         className="hidden"
       />

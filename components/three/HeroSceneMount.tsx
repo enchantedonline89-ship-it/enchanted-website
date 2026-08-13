@@ -44,12 +44,20 @@ export default function HeroSceneMount({
     let intersecting = false
     let disposed = false
 
-    try {
-      engine = new HeroScene(canvas, { dustCount, intensity })
-    } catch {
-      onFail?.()
-      return
+    function createEngine(): HeroScene | null {
+      try {
+        const nextEngine = new HeroScene(canvas!, { dustCount, intensity })
+        const rect = container!.getBoundingClientRect()
+        nextEngine.resize(Math.round(rect.width), Math.round(rect.height))
+        return nextEngine
+      } catch {
+        onFail?.()
+        return null
+      }
     }
+
+    engine = createEngine()
+    if (!engine) return
 
     function applyRunState() {
       if (disposed || !engine) return
@@ -91,12 +99,19 @@ export default function HeroSceneMount({
       event.preventDefault()
       engine?.stop()
     }
+    function onContextRestored() {
+      engine?.dispose()
+      const restoredEngine = createEngine()
+      if (!restoredEngine) return
+      engine = restoredEngine
+      if (staticFrame) restoredEngine.renderStatic()
+      applyRunState()
+    }
     canvas.addEventListener("webglcontextlost", onContextLost)
+    canvas.addEventListener("webglcontextrestored", onContextRestored)
 
     // First paint: do not wait on the ResizeObserver's own initial callback
     // so the very first frame is not empty.
-    const rect = container.getBoundingClientRect()
-    engine.resize(Math.round(rect.width), Math.round(rect.height))
     if (staticFrame) {
       engine.renderStatic()
     } else {
@@ -109,6 +124,7 @@ export default function HeroSceneMount({
       io.disconnect()
       document.removeEventListener("visibilitychange", onVisibility)
       canvas.removeEventListener("webglcontextlost", onContextLost)
+      canvas.removeEventListener("webglcontextrestored", onContextRestored)
       engine?.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -164,6 +164,7 @@ export default function Navbar() {
                 <li key={link.href} className="border-b border-line">
                   <Link
                     href={link.href}
+                    onClick={() => setDrawerOpen(false)}
                     className="block py-5 text-2xl tracking-tight text-ink"
                     style={{ fontVariationSettings: '"wdth" 108, "wght" 500' }}
                   >

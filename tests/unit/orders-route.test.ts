@@ -90,8 +90,8 @@ beforeEach(() => {
   // prices the fixture body submits, so any test that passes proves the server
   // used ITS numbers and not the client's.
   h.catalog.rows = [
-    { id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', price: 89.99, is_active: true },
-    { id: 'prod-clip', name: 'Crystal Hair Claw Clip', price: 29.99, is_active: true },
+    { id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', price: 89.99, sizes: ['36', '37', '38'], is_active: true },
+    { id: 'prod-clip', name: 'Crystal Hair Claw Clip', price: 29.99, sizes: null, is_active: true },
   ]
   h.catalog.error = null
 
@@ -100,7 +100,7 @@ beforeEach(() => {
       ? { select: () => ({ in: async () => ({ data: h.catalog.rows, error: h.catalog.error }) }) }
       : { insert: h.insert },
   )
-  h.getUser.mockResolvedValue({ data: { user: { id: 'session-user-id' } } })
+  h.getUser.mockResolvedValue({ data: { user: { id: 'session-user-id', email: 'nour@example.com' } }, error: null })
   h.mockMode.value = true
 })
 
@@ -296,13 +296,14 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
     expect(insertedRow().user_id).not.toBe('attacker-controlled-id')
   })
 
-  it('writes null when there is no session, even if the body names a user', async () => {
-    h.getUser.mockResolvedValue({ data: { user: null } })
+  it('rejects the request when there is no verified session', async () => {
+    h.getUser.mockResolvedValue({ data: { user: null }, error: null })
 
-    const { status } = await post(validBody({ user_id: 'someone-elses-id' }))
+    const { status, json } = await post(validBody({ user_id: 'someone-elses-id' }))
 
-    expect(status).toBe(200)
-    expect(insertedRow().user_id).toBeNull()
+    expect(status).toBe(401)
+    expect(json.error).toMatch(/sign in/i)
+    expect(h.insert).not.toHaveBeenCalled()
   })
 
   it('never spreads unlisted body fields into the insert', async () => {
@@ -469,6 +470,40 @@ describe('prices are derived server-side, never taken from the client', () => {
     const items = insertedRow().items as Array<{ name: string; price: number }>
     expect(items[0].name).toBe('Crystal Hair Claw Clip')
     expect(items[0].price).toBe(29.99)
+  })
+
+  it('rejects a size that is not currently offered by the product', async () => {
+    const { status, json } = await post(
+      validBody({
+        items: [
+          { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '999', qty: 1, price: 89.99 },
+        ],
+      }),
+    )
+
+    expect(status).toBe(409)
+    expect(json.error).toMatch(/selected sizes/i)
+    expect(h.insert).not.toHaveBeenCalled()
+  })
+
+  it('rejects a size on a product that does not use sizes', async () => {
+    const { status, json } = await post(
+      validBody({
+        items: [
+          { product_id: 'prod-clip', name: 'Crystal Hair Claw Clip', size: 'one-size', qty: 1, price: 29.99 },
+        ],
+      }),
+    )
+
+    expect(status).toBe(409)
+    expect(json.error).toMatch(/does not use a size/i)
+  })
+
+  it('rejects a catalog product without an orderable price', async () => {
+    h.catalog.rows[0].price = null
+    const { status, json } = await post(validBody())
+    expect(status).toBe(409)
+    expect(json.error).toMatch(/not available to order online/i)
   })
 
   it('rejects an unknown product rather than pricing it at zero', async () => {

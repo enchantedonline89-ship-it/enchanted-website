@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import type { Product } from '@/types'
 
 export interface CartItem {
@@ -41,21 +41,23 @@ function loadFromStorage(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // The server has no localStorage, so the first render must be empty to match
-  // the server HTML. Hydration then happens during the FIRST CLIENT RENDER via
-  // the adjust-state-during-render pattern, not in an effect: setting state
-  // inside an effect makes React commit the empty cart, then immediately
-  // re-render with the real one, which is a visible flash of "0 items" and the
-  // cascading render the lint rule is warning about.
+  // The server has no localStorage, so the first client render must also be
+  // empty. Reading storage during render changes the cart badge before React
+  // can hydrate the server markup and causes a full-tree hydration recovery.
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const changedBeforeRestore = useRef(false)
 
-  if (!hydrated && typeof window !== 'undefined') {
-    setHydrated(true)
-    const stored = loadFromStorage()
-    if (stored.length > 0) setItems(stored)
-  }
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (!changedBeforeRestore.current) {
+        setItems(loadFromStorage())
+      }
+      setHydrated(true)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   // Persist whenever items change, but never before hydration, or the first
   // render would overwrite a real saved cart with an empty one.
@@ -68,7 +70,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, hydrated])
 
+  const beginCartChange = useCallback(() => {
+    changedBeforeRestore.current = true
+    setHydrated(true)
+  }, [])
+
   const addToCart = useCallback((product: Product, selectedSize: string | null) => {
+    beginCartChange()
     setItems(prev => {
       const key = cartItemKey(product.id, selectedSize)
       const existing = prev.find(
@@ -83,20 +91,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { product, selectedSize, quantity: 1 }]
     })
-  }, [])
+  }, [beginCartChange])
 
   const removeFromCart = useCallback((productId: string, selectedSize: string | null) => {
+    beginCartChange()
     const key = cartItemKey(productId, selectedSize)
     setItems(prev => prev.filter(
       item => cartItemKey(item.product.id, item.selectedSize) !== key
     ))
-  }, [])
+  }, [beginCartChange])
 
   const updateQuantity = useCallback((
     productId: string,
     selectedSize: string | null,
     quantity: number
   ) => {
+    beginCartChange()
     const key = cartItemKey(productId, selectedSize)
     if (quantity <= 0) {
       setItems(prev => prev.filter(
@@ -111,9 +121,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         )
       )
     }
-  }, [])
+  }, [beginCartChange])
 
-  const clearCart = useCallback(() => setItems([]), [])
+  const clearCart = useCallback(() => {
+    beginCartChange()
+    setItems([])
+  }, [beginCartChange])
   const openCart = useCallback(() => setIsOpen(true), [])
   const closeCart = useCallback(() => setIsOpen(false), [])
 

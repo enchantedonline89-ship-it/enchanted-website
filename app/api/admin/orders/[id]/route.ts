@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMockMode } from '@/lib/mock-data'
 
 const VALID_STATUSES = ['pending', 'confirmed', 'delivered', 'cancelled']
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // The only email allowed to perform admin operations.
 // Set ADMIN_EMAIL in .env.local and Vercel environment variables.
@@ -41,20 +42,26 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid status value' }, { status: 400 })
   }
 
-  // Step 3: Validate id is a non-empty string (basic UUID shape check)
-  if (!id || typeof id !== 'string' || id.length > 64) {
+  // Step 3: Reject malformed identifiers before they reach Postgres.
+  if (!UUID_PATTERN.test(id)) {
     return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 })
   }
 
   const supabase = await createServiceClient()
-  const { error } = await supabase
+  const { data: updatedOrder, error } = await supabase
     .from('orders')
     .update({ status: body.status })
     .eq('id', id)
+    .select('id')
+    .maybeSingle()
 
   if (error) {
     console.error('Order status update error:', error)
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
+  }
+
+  if (!updatedOrder) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
   return NextResponse.json({ success: true })

@@ -8,35 +8,17 @@ import WhatsAppFloat from "@/components/public/WhatsAppFloat"
 import ProductGallery from "@/components/public/ProductGallery"
 import ProductBuyBox from "@/components/public/ProductBuyBox"
 import ProductCard from "@/components/public/ProductCard"
+import JsonLd from "@/components/seo/JsonLd"
+import BreadcrumbJsonLd from "@/components/seo/BreadcrumbJsonLd"
+import { SITE_NAME, absoluteUrl } from "@/components/seo/site"
 import { findBySlug, productHref } from "@/lib/product-url"
-import { mockProducts, mockCategories, isSupabaseMockMode } from "@/lib/mock-data"
-import type { Category, Product, SizeSystem } from "@/types"
+import { getCatalog } from "@/lib/catalog"
+import type { SizeSystem } from "@/types"
 
 export const revalidate = 3600
 
-async function loadCatalog(): Promise<{ products: Product[]; categories: Category[] }> {
-  if (isSupabaseMockMode()) {
-    return { products: mockProducts, categories: mockCategories }
-  }
-  try {
-    const { createClient } = await import("@/lib/supabase/server")
-    const supabase = await createClient()
-    const [{ data: p }, { data: c }] = await Promise.all([
-      supabase
-        .from("products")
-        .select("*, category:categories(id, name, slug, size_system)")
-        .eq("is_active", true),
-      supabase.from("categories").select("*").eq("is_active", true),
-    ])
-    if (!p?.length) return { products: mockProducts, categories: mockCategories }
-    return { products: p as Product[], categories: (c ?? []) as Category[] }
-  } catch {
-    return { products: mockProducts, categories: mockCategories }
-  }
-}
-
 async function resolve(slug: string) {
-  const { products, categories } = await loadCatalog()
+  const { products, categories } = await getCatalog()
   const product = findBySlug(products, slug)
   if (!product) return null
   const category =
@@ -68,6 +50,12 @@ export async function generateMetadata({
       url: productHref(product),
       type: "website",
       images: product.image_url ? [{ url: product.image_url }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description,
+      images: product.image_url ? [product.image_url] : undefined,
     },
   }
 }
@@ -106,14 +94,19 @@ export default async function ProductPage({
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
+    url: absoluteUrl(productHref(product)),
+    sku: product.id,
+    brand: { "@type": "Brand", name: SITE_NAME },
     ...(product.description ? { description: product.description } : {}),
     image: [product.image_url, ...(product.additional_images ?? [])].filter(Boolean),
     ...(product.price != null
       ? {
           offers: {
             "@type": "Offer",
+            url: absoluteUrl(productHref(product)),
             price: product.price.toFixed(2),
             priceCurrency: "USD",
+            seller: { "@type": "Organization", "@id": `${absoluteUrl("/")}#organization` },
             availability: product.is_active
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
@@ -124,9 +117,12 @@ export default async function ProductPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      <JsonLd data={jsonLd} />
+      <BreadcrumbJsonLd
+        items={[
+          ...(category ? [{ name: category.name, path: `/#catalog` }] : []),
+          { name: product.name, path: productHref(product) },
+        ]}
       />
       <Navbar />
 

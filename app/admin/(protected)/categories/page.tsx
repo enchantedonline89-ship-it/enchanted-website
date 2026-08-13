@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { Category } from '@/types'
-import { formatDate } from '@/lib/utils'
 import DeleteCategoryButton from './DeleteCategoryButton'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +24,9 @@ export default async function CategoriesPage() {
         {(categories ?? []).map((c: Category) => (
           <div key={c.id} className="bg-paper-raised border border-line overflow-hidden">
             {c.image_url && (
+              // Admin accepts owner-supplied HTTPS hosts that cannot be safely
+              // enumerated in next/image remotePatterns.
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={c.image_url} alt={c.name} className="w-full h-32 object-cover" />
             )}
             <div className="p-4">

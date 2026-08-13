@@ -76,6 +76,7 @@ export default function HeroCanvas({
 
   return (
     <HeroSceneMount
+      key={status}
       className={className}
       dustCount={dustCount}
       intensity={intensity}

@@ -45,21 +45,29 @@ export default function CategoryForm({ category, mode }: Props) {
       if (mode === 'create') {
         const { data, error: dbError } = await supabase.from('categories').insert(payload).select().single()
         if (dbError) throw dbError
-        await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'CREATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before: null, after: data } })
+        const { error: logError } = await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'CREATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before: null, after: data } })
+        if (logError) throw new Error('AUDIT_LOG_FAILED')
       } else {
-        const { data: before } = await supabase.from('categories').select().eq('id', category!.id).single()
+        const { data: before, error: beforeError } = await supabase.from('categories').select().eq('id', category!.id).single()
+        if (beforeError) throw beforeError
         const { data, error: dbError } = await supabase.from('categories').update(payload).eq('id', category!.id).select().single()
         if (dbError) throw dbError
-        await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'UPDATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before, after: data } })
+        const { error: logError } = await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'UPDATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before, after: data } })
+        if (logError) throw new Error('AUDIT_LOG_FAILED')
       }
 
-      await fetch('/api/revalidate', { method: 'POST' })
+      const revalidateResponse = await fetch('/api/revalidate', { method: 'POST' })
+      if (!revalidateResponse.ok) throw new Error('REVALIDATION_FAILED')
       router.push('/admin/categories')
       router.refresh()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'unknown'
       if (msg === 'SESSION_EXPIRED') {
         setError('Your session has expired. Please sign in again.')
+      } else if (msg === 'AUDIT_LOG_FAILED') {
+        setError('The category was saved, but its audit entry failed. Please contact support.')
+      } else if (msg === 'REVALIDATION_FAILED') {
+        setError('The category was saved, but the storefront refresh failed. Refresh it manually.')
       } else if (msg.includes('duplicate key') || msg.includes('unique')) {
         setError('A category with this name or slug already exists.')
       } else {
@@ -78,27 +86,28 @@ export default function CategoryForm({ category, mode }: Props) {
       {error && <div className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>}
 
       <div>
-        <label className={labelClass}>Category Name *</label>
-        <input type="text" value={form.name} onChange={e => set('name', e.target.value)} required className={inputClass} placeholder="e.g. Heels & Stilettos" />
+        <label htmlFor="category-name" className={labelClass}>Category Name *</label>
+        <input id="category-name" type="text" value={form.name} onChange={e => set('name', e.target.value)} required className={inputClass} placeholder="e.g. Heels & Stilettos" />
         {form.name && <p className="text-ink-dim/60 text-xs mt-1">Slug: {slugify(form.name)}</p>}
       </div>
 
       <div>
-        <label className={labelClass}>Description</label>
-        <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} className={inputClass + ' resize-none'} />
+        <label htmlFor="category-description" className={labelClass}>Description</label>
+        <textarea id="category-description" value={form.description} onChange={e => set('description', e.target.value)} rows={2} className={inputClass + ' resize-none'} />
       </div>
 
       <ImageUpload value={form.image_url} onChange={url => set('image_url', url)} label="Category Image" />
 
       <div className="flex gap-4 items-end">
         <div>
-          <label className={labelClass}>Sort Order</label>
-          <input type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value) || 0)} className={inputClass} style={{width: '120px'}} />
+          <label htmlFor="category-sort" className={labelClass}>Sort Order</label>
+          <input id="category-sort" type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value) || 0)} className={inputClass} style={{width: '120px'}} />
         </div>
         <label className="flex items-center gap-3 cursor-pointer pb-3">
-          <div onClick={() => set('is_active', !form.is_active)} className={`relative w-11 h-6 transition-colors ${form.is_active ? 'bg-ink' : 'bg-line'}`}>
-            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-ink shadow transition-transform ${form.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
-          </div>
+          <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} className="peer sr-only" />
+          <span className={`relative block w-11 h-6 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 ${form.is_active ? 'bg-ink' : 'bg-line'}`}>
+            <span className={`absolute top-0.5 left-0.5 block w-5 h-5 bg-paper shadow transition-transform ${form.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
+          </span>
           <span className="text-sm text-ink-dim">Active</span>
         </label>
       </div>
