@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMockMode } from '@/lib/mock-data'
+import { applyPromotions, type Promotion, type PromotionPrice } from '@/lib/promotions'
 
 // ─── Rate limiting (in-memory, per server instance) ──────────────────────────
 // Limits each IP to MAX_REQUESTS submissions within WINDOW_MS.
@@ -39,6 +40,9 @@ interface OrderItem {
   size: string | null
   qty: number
   price: number
+  original_price?: number
+  discount_percent?: number
+  promotion_name?: string
 }
 
 interface ValidationError {
@@ -234,7 +238,7 @@ export async function POST(request: NextRequest) {
   const svc = await createServiceClient()
   const { data: catalog, error: catalogError } = await svc
     .from('products')
-    .select('id, name, price, sizes, is_active')
+    .select('id, name, price, sizes, is_active, category_id')
     .in('id', [...new Set(submitted.map(i => i.product_id))])
 
   if (catalogError) {
@@ -244,7 +248,28 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const byId = new Map((catalog ?? []).map(p => [p.id, p]))
+  const now = new Date().toISOString()
+  const { data: promotionRows, error: promotionError } = await svc
+    .from('promotions')
+    .select('id, name, description, campaign_type, scope, category_id, discount_percent, starts_at, ends_at, is_active')
+    .eq('is_active', true)
+    .lte('starts_at', now)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
+
+  // Keep checkout working during the migration rollout, but never silently
+  // ignore an ordinary promotion-service failure that could overcharge someone.
+  if (promotionError && promotionError.code !== '42P01') {
+    return NextResponse.json(
+      { error: 'We could not confirm current discounts. Please try again.' },
+      { status: 503 },
+    )
+  }
+
+  const pricedCatalog = applyPromotions(
+    catalog ?? [],
+    (promotionRows ?? []) as Promotion[],
+  )
+  const byId = new Map(pricedCatalog.map(p => [p.id, p]))
 
   const items: OrderItem[] = []
   for (const line of submitted) {
@@ -278,12 +303,20 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       )
     }
+    const promotionPrice = product as typeof product & PromotionPrice
     items.push({
       product_id: product.id,
       name: String(product.name),
       size: line.size,
       qty: line.qty,
       price: Number(product.price),
+      ...(promotionPrice.original_price != null
+        ? {
+            original_price: Number(promotionPrice.original_price),
+            discount_percent: Number(promotionPrice.discount_percent),
+            promotion_name: String(promotionPrice.promotion_name),
+          }
+        : {}),
     })
   }
 
@@ -313,7 +346,7 @@ export async function POST(request: NextRequest) {
         total,
         status: 'pending',
       })
-      .select('id')
+      .select('id, order_number')
       .single()
 
     if (error) {
@@ -322,7 +355,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save order. Please try again.' }, { status: 500 })
     }
 
-    return NextResponse.json({ id: data.id, items, subtotal, total, delivery_fee: deliveryFee })
+    return NextResponse.json({
+      id: data.id,
+      order_number: data.order_number,
+      items,
+      subtotal,
+      total,
+      delivery_fee: deliveryFee,
+    })
   } catch (err) {
     console.error('Order API unexpected error:', err)
     return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 })

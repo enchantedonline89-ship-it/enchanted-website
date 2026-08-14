@@ -56,3 +56,4 @@ CLAUDE.md
 /coverage/
 # skills CLI lockfile; .agents/ itself is ignored
 skills-lock.json
+.env*.local

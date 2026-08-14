@@ -5,6 +5,7 @@ import Image from "next/image"
 import { X, CaretLeft, CaretRight } from "@phosphor-icons/react/ssr"
 import { useOverlay } from "@/lib/use-overlay"
 import type { Product } from "@/types"
+import ProductPrice from "./ProductPrice"
 
 export default function ImageLightbox({
   product,
@@ -68,7 +69,7 @@ export default function ImageLightbox({
         <div className="min-w-0">
           <p className="truncate text-[0.9375rem] text-ink">{product.name}</p>
           <p className="tnum t-meta mt-0.5">
-            {product.price != null ? `$${product.price.toFixed(2)}` : "Price on request"}
+            <ProductPrice product={product} askLabel="Price on request" />
           </p>
         </div>
         <button

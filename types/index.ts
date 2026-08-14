@@ -26,6 +26,10 @@ export interface Product {
   name: string
   description: string | null
   price: number | null
+  /** Effective storefront price after an active promotion is applied. */
+  original_price?: number | null
+  discount_percent?: number | null
+  promotion_name?: string | null
   image_url: string | null
   additional_images: string[] | null
   sizes: string[] | null
@@ -48,11 +52,19 @@ export interface Product {
   category?: Category | null
 }
 
+export type SiteTheme = 'default' | 'christmas' | 'ramadan'
+
+export interface SiteSettings {
+  id: 'storefront'
+  active_theme: SiteTheme
+  updated_at: string
+}
+
 export interface AdminLog {
   id: string
   admin_email: string
   action: 'CREATE' | 'UPDATE' | 'DELETE'
-  entity_type: 'product' | 'category'
+  entity_type: 'product' | 'category' | 'promotion' | 'site_setting'
   entity_id: string | null
   entity_name: string | null
   changes: {
@@ -94,6 +106,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string
+  order_number: string
   user_id: string
   user_email: string
   full_name: string
@@ -108,6 +121,7 @@ export interface Order {
   total: number
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled'
   created_at: string
+  updated_at: string
 }
 
 // Dashboard stats
@@ -123,12 +137,17 @@ export interface DashboardStats {
 export interface OrderAnalytics {
   id: number
   total_orders: number
+  valid_orders: number
   total_revenue: number
   avg_order_value: number
+  orders_today: number
   orders_this_month: number
   revenue_this_month: number
   orders_this_week: number
   revenue_this_week: number
+  revenue_last_30_days: number
+  pipeline_value: number
+  completion_rate: number
   pending_count: number
   confirmed_count: number
   delivered_count: number
@@ -137,5 +156,5 @@ export interface OrderAnalytics {
   outside_count: number
   top_products: Array<{ name: string; qty: number; revenue: number }> | null
   top_cities: Array<{ city: string; count: number }> | null
-  daily_volume: Array<{ date: string; count: number }> | null
+  daily_volume: Array<{ date: string; count: number; revenue: number }> | null
 }

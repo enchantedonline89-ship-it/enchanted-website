@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 const mockOrders: Order[] = [
   {
     id: 'aaaabbbb-cccc-dddd-eeee-ffff00001111',
+    order_number: 'ES-2608-001001',
     user_id: 'mock-user-id',
     user_email: 'test@enchanted.style',
     full_name: 'Test User',
@@ -21,6 +22,7 @@ const mockOrders: Order[] = [
     total: 93.99,
     status: 'pending',
     created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
 ]
 
@@ -81,7 +83,7 @@ export default async function AdminOrdersPage() {
               {orders.map(order => (
                 <tr key={order.id} className="border-b border-line last:border-0 hover:bg-ink/[0.04] transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-mono text-ink text-xs">#{order.id.slice(0, 8)}</p>
+                    <p className="font-mono text-ink text-xs">{order.order_number}</p>
                     <p className="text-ink-dim text-xs mt-0.5">
                       {new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </p>

@@ -9,6 +9,8 @@ import { AuthProvider } from "@/lib/auth-context"
 import WelcomeModal from "@/components/public/WelcomeModal"
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd"
 import { SITE_URL, SITE_NAME } from "@/components/seo/site"
+import SiteThemeShell from "@/components/public/SiteThemeShell"
+import { getSiteTheme } from "@/lib/site-theme"
 
 /* Archivo carries everything functional: prices, size chips, form labels. It is
    far more legible at those sizes than a display serif. */
@@ -67,11 +69,13 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const siteTheme = await getSiteTheme()
+
   return (
     <html lang="en">
       <body
@@ -91,8 +95,10 @@ export default function RootLayout({
         </Suspense>
         <AuthProvider>
           <CartProvider>
-            <WelcomeModal />
-            {children}
+            <SiteThemeShell theme={siteTheme}>
+              <WelcomeModal />
+              {children}
+            </SiteThemeShell>
           </CartProvider>
         </AuthProvider>
       </body>

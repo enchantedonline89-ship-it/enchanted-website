@@ -56,7 +56,11 @@ export default function ShippingPage() {
         <section>
           <h2>Order tracking</h2>
           <p>
-            Message us on{' '}
+            Check your latest status on the{' '}
+            <a href="/track-order" className="text-ink hover:underline">
+              order tracking page
+            </a>{' '}
+            using your reference and checkout email, or message us on{' '}
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}

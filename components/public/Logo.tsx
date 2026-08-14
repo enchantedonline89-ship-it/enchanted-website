@@ -23,7 +23,7 @@ export default function Logo({
     <Link
       href="/"
       aria-label="Enchanted Style, home"
-      className={`inline-flex items-center transition-opacity duration-200 hover:opacity-75 ${className}`}
+      className={`seasonal-logo relative inline-flex items-center transition-opacity duration-200 hover:opacity-75 ${className}`}
     >
       <Image
         src="/brand/logo-wordmark.png"
@@ -35,6 +35,7 @@ export default function Logo({
         className="h-auto w-auto"
         style={{ width, height }}
       />
+      <span className="seasonal-logo-accent" aria-hidden="true" />
     </Link>
   )
 }

@@ -86,7 +86,7 @@ export default async function OrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
                   <div>
                     <p className="tnum text-[0.9375rem] text-ink">
-                      Order {order.id.slice(0, 8)}
+                      Order {order.order_number}
                     </p>
                     <p className="t-meta mt-1.5">
                       {new Date(order.created_at).toLocaleDateString('en-GB', {
@@ -131,6 +131,12 @@ export default async function OrdersPage() {
                     <dd className="tnum text-ink">${order.total.toFixed(2)}</dd>
                   </div>
                 </dl>
+                <Link
+                  href="/track-order"
+                  className="t-meta link-grow mt-4 inline-flex text-ink-dim hover:text-ink"
+                >
+                  Track this order
+                </Link>
               </li>
             )
           })}

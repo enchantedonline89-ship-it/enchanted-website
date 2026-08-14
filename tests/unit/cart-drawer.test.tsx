@@ -58,7 +58,9 @@ function jsonResponse(data: unknown, { ok = true, status = 200 } = {}) {
 beforeEach(() => {
   auth.user = null
   vi.stubGlobal('fetch', fetchMock)
-  fetchMock.mockResolvedValue(jsonResponse({ id: 'ord-abc12345' }))
+  fetchMock.mockResolvedValue(
+    jsonResponse({ id: 'ord-abc12345', order_number: 'ES-2608-001001' }),
+  )
   openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
 })
 
@@ -285,7 +287,8 @@ describe('CartDrawer — state machine', () => {
     await reachSuccess(user)
 
     expect(within(drawer()).getByText(/order saved/i)).toBeInTheDocument()
-    expect(within(drawer()).getByText('ord-abc1')).toBeInTheDocument()
+    // The reference shown is the trackable order number, not a UUID fragment.
+    expect(within(drawer()).getByText('ES-2608-001001')).toBeInTheDocument()
   })
 
   it('routes back to the auth wall with an explanation if the session lapsed mid-form', async () => {

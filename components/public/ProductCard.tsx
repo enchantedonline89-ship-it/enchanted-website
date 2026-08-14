@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart-context"
 import { productHref } from "@/lib/product-url"
 import { useGoldTilt } from "@/components/three/useGoldTilt"
 import type { Product } from "@/types"
+import ProductPrice from "./ProductPrice"
 
 /**
  * No card chrome. The photograph is the tile, type sits under it, and the only
@@ -92,7 +93,7 @@ export default function ProductCard({
           </Link>
         </h3>
         <p className="tnum shrink-0 text-[0.9375rem] text-ink">
-          {product.price != null ? `$${product.price.toFixed(2)}` : "Ask"}
+          <ProductPrice product={product} />
         </p>
       </div>
 

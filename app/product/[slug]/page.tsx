@@ -14,6 +14,7 @@ import { SITE_NAME, absoluteUrl } from "@/components/seo/site"
 import { findBySlug, productHref } from "@/lib/product-url"
 import { getCatalog } from "@/lib/catalog"
 import type { SizeSystem } from "@/types"
+import ProductPrice from "@/components/public/ProductPrice"
 
 export const revalidate = 3600
 
@@ -153,7 +154,7 @@ export default async function ProductPage({
             </h1>
 
             <p className="tnum mt-3 text-[1.125rem] text-ink">
-              {product.price != null ? `$${product.price.toFixed(2)}` : "Price on request"}
+              <ProductPrice product={product} askLabel="Price on request" />
             </p>
 
             {category && (

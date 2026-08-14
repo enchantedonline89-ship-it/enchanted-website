@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
@@ -29,6 +29,8 @@ export async function POST() {
 
     revalidatePath("/")
     revalidatePath("/", "layout")
+    revalidatePath("/product/[slug]", "page")
+    revalidateTag("site-settings", "max")
     return NextResponse.json({ revalidated: true })
   } catch {
     return NextResponse.json({ revalidated: false }, { status: 500 })

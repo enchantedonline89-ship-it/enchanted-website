@@ -480,3 +480,184 @@ a {
 .track-scroll::-webkit-scrollbar { display: none; }
 
 } /* end @layer components */
+
+/* ============================================================
+   STOREFRONT THEMES
+   Scoped below the public theme shell so protected admin screens retain the
+   neutral working palette. Seasonal motion uses transform only and is removed
+   entirely for reduced-motion visitors.
+   ============================================================ */
+
+.site-theme-root {
+  min-height: 100dvh;
+  background: var(--color-paper);
+}
+
+.site-theme-root[data-site-theme="christmas"] {
+  --color-paper: #fffaf5;
+  --color-paper-raised: #fffdf9;
+  --color-paper-sunken: #f7efe7;
+  --color-ink: #19231c;
+  --color-ink-dim: #505c52;
+  --color-ink-faint: #687069;
+  --color-line: rgba(35, 76, 53, 0.16);
+  --color-line-strong: rgba(35, 76, 53, 0.5);
+}
+
+.site-theme-root[data-site-theme="ramadan"] {
+  --color-paper: #fffaf0;
+  --color-paper-raised: #fffdf7;
+  --color-paper-sunken: #f4ecdc;
+  --color-ink: #182642;
+  --color-ink-dim: #4f596d;
+  --color-ink-faint: #687083;
+  --color-gold: #d7a64b;
+  --color-gold-hi: #edc979;
+  --color-gold-deep: #75500f;
+  --color-line: rgba(24, 38, 66, 0.15);
+  --color-line-strong: rgba(24, 38, 66, 0.5);
+}
+
+.site-theme-root[data-site-theme="christmas"]::before,
+.site-theme-root[data-site-theme="ramadan"]::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 55;
+  height: 3px;
+  pointer-events: none;
+}
+
+.site-theme-root[data-site-theme="christmas"]::before {
+  background: linear-gradient(90deg, #8b2430 0 33%, #f0c068 33% 66%, #234c35 66%);
+}
+
+.site-theme-root[data-site-theme="ramadan"]::before {
+  background: linear-gradient(90deg, #182642, #d7a64b 50%, #182642);
+}
+
+.seasonal-logo-accent {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent {
+  top: -0.2rem;
+  left: 0.15rem;
+  display: block;
+  width: 1.65rem;
+  height: 1.3rem;
+  transform: rotate(-12deg);
+  transform-origin: bottom left;
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0.05rem 0.18rem 0.22rem;
+  background: #a72d39;
+  clip-path: polygon(12% 100%, 48% 0, 100% 100%);
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1.35rem;
+  height: 0.3rem;
+  border: 1px solid rgba(20, 18, 14, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 1.15rem -0.85rem 0 -0.06rem #fff;
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent {
+  top: -0.45rem;
+  right: -0.85rem;
+  display: block;
+  width: 1.7rem;
+  height: 1.7rem;
+  color: #a97822;
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent::before {
+  content: "☾";
+  position: absolute;
+  inset: 0;
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent::after {
+  content: "✦";
+  position: absolute;
+  right: 0;
+  top: -0.08rem;
+  font-size: 0.55rem;
+}
+
+.seasonal-snow {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+}
+
+.seasonal-snowflake {
+  position: absolute;
+  top: -1rem;
+  left: var(--snow-left);
+  width: var(--snow-size);
+  height: var(--snow-size);
+  border: 1px solid rgba(35, 76, 53, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  animation: seasonal-snow-fall var(--snow-duration) linear var(--snow-delay) infinite;
+  will-change: transform;
+}
+
+@keyframes seasonal-snow-fall {
+  from { transform: translate3d(0, -2rem, 0) rotate(0deg); }
+  to { transform: translate3d(var(--snow-drift), calc(100dvh + 3rem), 0) rotate(360deg); }
+}
+
+.seasonal-ramadan-ornament {
+  position: fixed;
+  top: 5.25rem;
+  right: clamp(1rem, 3vw, 3rem);
+  z-index: 40;
+  width: 3.75rem;
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.seasonal-ramadan-ornament svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  fill: #d7a64b;
+  stroke: #182642;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+
+@media (max-width: 640px) {
+  .seasonal-snowflake:nth-child(n + 8) { display: none; }
+  .seasonal-ramadan-ornament {
+    top: 4.75rem;
+    right: 0.75rem;
+    width: 2.75rem;
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seasonal-snow { display: none; }
+}

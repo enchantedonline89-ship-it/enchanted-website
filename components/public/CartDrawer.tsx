@@ -9,6 +9,7 @@ import { useOverlay } from "@/lib/use-overlay"
 import { useAuth } from "@/lib/auth-context"
 import AuthModal from "./AuthModal"
 import { buildOwnerNotificationURL, type OrderPayload } from "@/lib/whatsapp"
+import { pricePresentation } from "@/lib/promotions"
 
 type DrawerState = "cart" | "auth-required" | "details" | "success"
 
@@ -33,7 +34,7 @@ export default function CartDrawer() {
 
   const [placing, setPlacing] = useState(false)
   const [placeError, setPlaceError] = useState<string | null>(null)
-  const [orderId, setOrderId] = useState<string | null>(null)
+  const [orderNumber, setOrderNumber] = useState<string | null>(null)
   // Held so the success screen can offer the handoff as a real anchor. window.open
   // fires after an awaited fetch, so its user-activation token is spent and mobile
   // browsers block it; the anchor is a fresh gesture and never blocked.
@@ -105,7 +106,7 @@ export default function CartDrawer() {
     if (drawerState === "success") {
       clearCart()
       setDrawerState("cart")
-      setOrderId(null)
+      setOrderNumber(null)
     }
     closeCart()
   }
@@ -163,7 +164,7 @@ export default function CartDrawer() {
         return
       }
 
-      setOrderId(data.id)
+      setOrderNumber(typeof data.order_number === "string" ? data.order_number : data.id)
 
       // Server-priced figures, falling back to the local ones only if the
       // response is somehow shaped differently than expected.
@@ -327,6 +328,11 @@ export default function CartDrawer() {
                               {money((item.product.price ?? 0) * item.quantity)}
                             </p>
                           </div>
+                          {pricePresentation(item.product).discountPercent != null && (
+                            <p className="mt-2 text-[0.6875rem] text-signal-ok">
+                              {pricePresentation(item.product).discountPercent}% event discount applied
+                            </p>
+                          )}
                         </div>
 
                         <button
@@ -564,10 +570,10 @@ export default function CartDrawer() {
               </p>
 
               <dl className="mt-6 flex flex-col gap-2 border-t border-line pt-4 text-[0.875rem]">
-                {orderId && (
+                {orderNumber && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-ink-dim">Reference</dt>
-                    <dd className="tnum truncate text-ink">{orderId.slice(0, 8)}</dd>
+                    <dd className="tnum truncate text-ink">{orderNumber}</dd>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -595,11 +601,14 @@ export default function CartDrawer() {
                 <Link href="/orders" className="btn btn-ghost w-full" onClick={handleClose}>
                   See your orders
                 </Link>
+                <Link href="/track-order" className="btn btn-ghost w-full" onClick={handleClose}>
+                  Track an order
+                </Link>
                 <button
                   onClick={() => {
                     clearCart()
                     setDrawerState("cart")
-                    setOrderId(null)
+                    setOrderNumber(null)
                     closeCart()
                   }}
                   className="btn btn-ghost w-full"

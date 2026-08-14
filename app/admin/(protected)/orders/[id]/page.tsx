@@ -15,6 +15,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   if (isSupabaseMockMode()) {
     order = {
       id,
+      order_number: 'ES-2608-001001',
       user_id: 'mock-user-id',
       user_email: 'test@enchanted.style',
       full_name: 'Test User',
@@ -29,6 +30,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       total: 93.99,
       status: 'pending',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
   } else {
     const supabase = await createServiceClient()
@@ -43,7 +45,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         <Link href="/admin/orders" className="t-meta link-grow text-ink-dim hover:text-ink">
           Back to orders
         </Link>
-        <h1 className="text-2xl text-ink">Order #{order.id.slice(0, 8)}</h1>
+        <h1 className="text-2xl text-ink">Order {order.order_number}</h1>
       </div>
 
       <div className="space-y-5">

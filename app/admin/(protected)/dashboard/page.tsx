@@ -1,7 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import AuditLogTable from '@/components/admin/AuditLogTable'
 import { DashboardStats, AdminLog, OrderAnalytics } from '@/types'
-import RefreshButton from './RefreshButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +32,7 @@ export default async function DashboardPage() {
     { count: totalCategories },
     { count: totalLogs },
     { data: recentLogs },
-    { data: analyticsRow },
+    { data: analyticsRow, error: analyticsError },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true),
@@ -74,7 +73,6 @@ export default async function DashboardPage() {
             Signed in as <span className="text-ink">{user?.email ?? 'unknown'}</span>
           </p>
         </div>
-        <RefreshButton />
       </div>
 
       {/* ── Catalog inventory ───────────────────────────────────── */}
@@ -102,16 +100,17 @@ export default async function DashboardPage() {
       {a ? (
         <>
           {/* ── Revenue cards ───────────────────────────────────── */}
-          <section>
+          <section id="analytics" className="scroll-mt-8">
             <h2 className="text-xs uppercase tracking-widest text-ink-dim mb-3">Revenue</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Stat label="Total Revenue"   value={fmt(a.total_revenue)}      color="text-ink" />
+              <Stat label="Delivered Revenue" value={fmt(a.total_revenue)} color="text-ink"
+                sub={`${a.delivered_count} completed orders`} />
               <Stat label="This Month"      value={fmt(a.revenue_this_month)} color="text-ink"
-                sub={a.orders_this_month + ' orders'} />
-              <Stat label="This Week"       value={fmt(a.revenue_this_week)}  color="text-ink"
-                sub={a.orders_this_week + ' orders'} />
+                sub={a.orders_this_month + ' valid orders'} />
+              <Stat label="Open Pipeline"   value={fmt(a.pipeline_value ?? 0)} color="text-signal-warn"
+                sub={`${a.pending_count + a.confirmed_count} open orders`} />
               <Stat label="Avg Order Value" value={fmt(a.avg_order_value)}    color="text-ink"
-                sub={a.total_orders + ' total orders'} />
+                sub={`${a.completion_rate ?? 0}% completion rate`} />
             </div>
           </section>
 
@@ -244,7 +243,9 @@ export default async function DashboardPage() {
       ) : (
         /* ── No analytics / no orders yet ──────────────────────── */
         <section className="bg-paper-raised border border-line p-8 text-center">
-          <p className="text-ink-dim text-sm">No order analytics yet.</p>
+          <p className="text-ink-dim text-sm">
+            {analyticsError ? 'Order analytics are temporarily unavailable.' : 'No order analytics yet.'}
+          </p>
           <p className="text-ink-dim/60 text-xs mt-1">
             Analytics will appear automatically once the first order is placed.
           </p>

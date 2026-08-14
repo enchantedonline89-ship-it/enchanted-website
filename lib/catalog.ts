@@ -1,12 +1,14 @@
 import { cache } from "react"
 import type { Category, Product } from "@/types"
 import { isSupabaseMockMode, mockCategories, mockProducts } from "@/lib/mock-data"
+import { applyPromotions, type Promotion } from "@/lib/promotions"
 
 export type CatalogSource = "live" | "mock" | "unavailable"
 
 export interface CatalogResult {
   products: Product[]
   categories: Category[]
+  promotions: Promotion[]
   source: CatalogSource
 }
 
@@ -22,14 +24,19 @@ function mockCatalogAllowed(): boolean {
 export const getCatalog = cache(async (): Promise<CatalogResult> => {
   if (isSupabaseMockMode()) {
     return mockCatalogAllowed()
-      ? { products: mockProducts, categories: mockCategories, source: "mock" }
-      : { products: [], categories: [], source: "unavailable" }
+      ? { products: mockProducts, categories: mockCategories, promotions: [], source: "mock" }
+      : { products: [], categories: [], promotions: [], source: "unavailable" }
   }
 
   try {
     const { createClient } = await import("@/lib/supabase/server")
     const supabase = await createClient()
-    const [{ data: dbProducts, error: productError }, { data: dbCategories, error: categoryError }] =
+    const now = new Date().toISOString()
+    const [
+      { data: dbProducts, error: productError },
+      { data: dbCategories, error: categoryError },
+      { data: dbPromotions, error: promotionError },
+    ] =
       await Promise.all([
         supabase
           .from("products")
@@ -42,22 +49,48 @@ export const getCatalog = cache(async (): Promise<CatalogResult> => {
           .select("*")
           .eq("is_active", true)
           .order("sort_order", { ascending: true }),
+        supabase
+          .from("promotions")
+          .select("id, name, description, campaign_type, scope, category_id, discount_percent, starts_at, ends_at, is_active, category:categories(id, name)")
+          .eq("is_active", true)
+          .lte("starts_at", now)
+          .or(`ends_at.is.null,ends_at.gt.${now}`),
       ])
 
     if (productError || categoryError) throw productError ?? categoryError
 
     if (!dbProducts?.length && mockCatalogAllowed()) {
-      return { products: mockProducts, categories: mockCategories, source: "mock" }
+      return { products: mockProducts, categories: mockCategories, promotions: [], source: "mock" }
     }
 
+    // A missing migration or transient promotion read must never take the whole
+    // catalog down. Falling back to base prices is the safe failure mode.
+    //
+    // PostgREST returns an embedded relation as an array even when the foreign
+    // key guarantees at most one row, so `category` arrives as `[{id,name}]`.
+    // Normalise it here rather than casting, so the rest of the app can rely on
+    // the single-object shape the Promotion type declares.
+    const promotions: Promotion[] = promotionError
+      ? []
+      : ((dbPromotions ?? []) as unknown[]).map((row) => {
+          const r = row as Record<string, unknown>
+          const embedded = r.category
+          const category = Array.isArray(embedded) ? embedded[0] : embedded
+          return {
+            ...(r as Omit<Promotion, "category">),
+            category: (category as Promotion["category"]) ?? null,
+          }
+        })
+
     return {
-      products: (dbProducts ?? []) as Product[],
+      products: applyPromotions((dbProducts ?? []) as Product[], promotions),
       categories: (dbCategories ?? []) as Category[],
+      promotions,
       source: "live",
     }
   } catch {
     return mockCatalogAllowed()
-      ? { products: mockProducts, categories: mockCategories, source: "mock" }
-      : { products: [], categories: [], source: "unavailable" }
+      ? { products: mockProducts, categories: mockCategories, promotions: [], source: "mock" }
+      : { products: [], categories: [], promotions: [], source: "unavailable" }
   }
 })

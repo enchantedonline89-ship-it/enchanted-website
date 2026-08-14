@@ -11,6 +11,7 @@ const SHOP = [
 ]
 
 const HELP = [
+  { href: "/track-order", label: "Track an order" },
   { href: "/shipping", label: "Shipping" },
   { href: "/returns", label: "Returns" },
   { href: "/contact", label: "Contact" },

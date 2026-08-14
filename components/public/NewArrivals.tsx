@@ -6,6 +6,7 @@ import Link from "next/link"
 import ImageLightbox from "./ImageLightbox"
 import { productHref } from "@/lib/product-url"
 import type { Product } from "@/types"
+import ProductPrice from "./ProductPrice"
 
 /**
  * Deliberately a different layout family from the catalog grid: a track that runs
@@ -65,7 +66,7 @@ export default function NewArrivals({ products }: { products: Product[] }) {
                   </Link>
                 </p>
                 <p className="tnum shrink-0 text-[0.9375rem] text-ink-dim">
-                  {product.price != null ? `$${product.price.toFixed(2)}` : "Ask"}
+                  <ProductPrice product={product} />
                 </p>
               </div>
             </li>

@@ -7,6 +7,9 @@ import {
   Tag,
   Folders,
   Receipt,
+  ChartLineUp,
+  Percent,
+  Palette,
   SignOut,
   X,
   ArrowSquareOut,
@@ -20,6 +23,9 @@ const navItems = [
   { label: 'Products', href: '/admin/products', Icon: Tag },
   { label: 'Categories', href: '/admin/categories', Icon: Folders },
   { label: 'Orders', href: '/admin/orders', Icon: Receipt },
+  { label: 'Analytics', href: '/admin/dashboard#analytics', Icon: ChartLineUp },
+  { label: 'Events & discounts', href: '/admin/promotions', Icon: Percent },
+  { label: 'Appearance', href: '/admin/settings', Icon: Palette },
 ]
 
 interface AdminSidebarProps {

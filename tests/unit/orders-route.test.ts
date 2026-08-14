@@ -10,7 +10,9 @@ const h = vi.hoisted(() => {
   const getUser = vi.fn()
   // The catalog the server prices against.
   const catalog = { rows: [] as Array<Record<string, unknown>>, error: null as unknown }
-  return { single, select, insert, from, getUser, catalog, mockMode: { value: true } }
+  // Live promotions the server prices against.
+  const promos = { rows: [] as Array<Record<string, unknown>>, error: null as unknown }
+  return { single, select, insert, from, getUser, catalog, promos, mockMode: { value: true } }
 })
 
 vi.mock('@/lib/mock-data', () => ({
@@ -72,7 +74,10 @@ function validBody(overrides: Record<string, unknown> = {}) {
 
 async function post(body: unknown, opts?: Parameters<typeof makeRequest>[1]) {
   const res = await POST(makeRequest(body, opts))
-  return { status: res.status, json: (await res.json()) as { id?: string; error?: string } }
+  return {
+    status: res.status,
+    json: (await res.json()) as { id?: string; order_number?: string; error?: string },
+  }
 }
 
 /** The object actually handed to supabase.insert(). */
@@ -82,7 +87,10 @@ function insertedRow(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-  h.single.mockResolvedValue({ data: { id: 'ord-real-1' }, error: null })
+  h.single.mockResolvedValue({
+    data: { id: 'ord-real-1', order_number: 'ES-2608-001001' },
+    error: null,
+  })
   h.select.mockImplementation(() => ({ single: h.single }))
   h.insert.mockImplementation(() => ({ select: h.select }))
 
@@ -95,11 +103,27 @@ beforeEach(() => {
   ]
   h.catalog.error = null
 
-  h.from.mockImplementation((table: string) =>
-    table === 'products'
-      ? { select: () => ({ in: async () => ({ data: h.catalog.rows, error: h.catalog.error }) }) }
-      : { insert: h.insert },
-  )
+  h.promos.rows = []
+  h.promos.error = null
+
+  h.from.mockImplementation((table: string) => {
+    if (table === 'products') {
+      return { select: () => ({ in: async () => ({ data: h.catalog.rows, error: h.catalog.error }) }) }
+    }
+    if (table === 'promotions') {
+      // .select().eq().lte().or() — only the final call is awaited.
+      return {
+        select: () => ({
+          eq: () => ({
+            lte: () => ({
+              or: async () => ({ data: h.promos.rows, error: h.promos.error }),
+            }),
+          }),
+        }),
+      }
+    }
+    return { insert: h.insert }
+  })
   h.getUser.mockResolvedValue({ data: { user: { id: 'session-user-id', email: 'nour@example.com' } }, error: null })
   h.mockMode.value = true
 })
@@ -107,10 +131,16 @@ beforeEach(() => {
 // ─── Happy path ───────────────────────────────────────────────────────────────
 
 describe('POST /api/orders — accepted orders', () => {
+  beforeEach(() => {
+    h.mockMode.value = false // these assert the real pricing and insert path
+  })
+
   it('accepts a well-formed Beirut order', async () => {
     const { status, json } = await post(validBody())
     expect(status).toBe(200)
     expect(json.id).toBeTruthy()
+    expect(json.order_number).toBe('ES-2608-001001')
+    expect(h.select).toHaveBeenCalledWith('id, order_number')
   })
 
   it('accepts a well-formed outside-Beirut order at the $4 fee', async () => {
@@ -392,6 +422,13 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
     h.from.mockImplementation((table: string) => {
       if (table === 'products') {
         return { select: () => ({ in: async () => ({ data: h.catalog.rows, error: null }) }) }
+      }
+      if (table === 'promotions') {
+        return {
+          select: () => ({
+            eq: () => ({ lte: () => ({ or: async () => ({ data: [], error: null }) }) }),
+          }),
+        }
       }
       throw new Error('getaddrinfo ENOTFOUND xyz.supabase.co')
     })

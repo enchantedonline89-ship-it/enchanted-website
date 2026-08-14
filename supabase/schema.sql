@@ -47,12 +47,26 @@ CREATE TABLE IF NOT EXISTS admin_logs (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   admin_email  TEXT NOT NULL,
   action       TEXT NOT NULL CHECK (action IN ('CREATE', 'UPDATE', 'DELETE')),
-  entity_type  TEXT NOT NULL CHECK (entity_type IN ('product', 'category')),
+  entity_type  TEXT NOT NULL CHECK (entity_type IN ('product', 'category', 'promotion', 'site_setting')),
   entity_id    UUID,
   entity_name  TEXT,
   changes      JSONB,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================================
+-- STOREFRONT SETTINGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS site_settings (
+  id           TEXT PRIMARY KEY CHECK (id = 'storefront'),
+  active_theme TEXT NOT NULL DEFAULT 'default'
+    CHECK (active_theme IN ('default', 'christmas', 'ramadan')),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO site_settings (id, active_theme)
+VALUES ('storefront', 'default')
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
 -- AUTO-UPDATE updated_at TRIGGER
@@ -73,6 +87,10 @@ CREATE TRIGGER update_products_updated_at
   BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_site_settings_updated_at
+  BEFORE UPDATE ON site_settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
 -- ============================================================
@@ -80,6 +98,7 @@ CREATE TRIGGER update_products_updated_at
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- IMPORTANT: Disable public sign-ups in Supabase Dashboard
@@ -134,6 +153,24 @@ CREATE POLICY "logs_admin_select" ON admin_logs
 
 CREATE POLICY "logs_admin_insert" ON admin_logs
   FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
+
+-- Storefront settings: the active theme is public, but only the owner can write.
+CREATE POLICY "site_settings_public_read" ON site_settings
+  FOR SELECT USING (id = 'storefront');
+
+CREATE POLICY "site_settings_admin_insert" ON site_settings
+  FOR INSERT WITH CHECK (
+    id = 'storefront'
+    AND LOWER(auth.email()) = 'enchantedonline89@gmail.com'
+  );
+
+CREATE POLICY "site_settings_admin_update" ON site_settings
+  FOR UPDATE
+  USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
+  WITH CHECK (
+    id = 'storefront'
+    AND LOWER(auth.email()) = 'enchantedonline89@gmail.com'
+  );
 
 -- ============================================================
 -- STORAGE RLS — Run AFTER creating the product-images bucket
