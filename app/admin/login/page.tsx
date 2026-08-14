@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/public/Logo'
+import Link from 'next/link'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -91,6 +92,15 @@ export default function AdminLoginPage() {
               {loading ? 'Signing in' : 'Sign in'}
             </button>
           </form>
+
+          <div className="mt-6 border-t border-line pt-6">
+            <Link href="/admin/demo" className="btn btn-ghost w-full">
+              Open read-only client demo
+            </Link>
+            <p className="t-meta mt-2 text-center normal-case tracking-normal">
+              Mock data only. No live customer information or editing access.
+            </p>
+          </div>
         </div>
       </div>
     </main>

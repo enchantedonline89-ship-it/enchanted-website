@@ -7,6 +7,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export async function proxy(request: NextRequest) {
+  // Public, read-only client demo. It contains only fictional/mock records and
+  // no mutation controls, live orders, customer PII, or Supabase session.
+  if (request.nextUrl.pathname === '/admin/demo') {
+    return NextResponse.next()
+  }
+
   // Mock mode exists so the storefront can be previewed without a backend.
   // It must never open the admin panel: with no Supabase URL set in production,
   // this used to wave every /admin/* request straight through, and the admin
