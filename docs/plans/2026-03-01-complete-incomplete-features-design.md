@@ -142,7 +142,7 @@
 ## Constraints & Notes
 
 - No new dependencies — use existing: React state, Tailwind, Next.js built-ins
-- WhatsApp number already in `lib/whatsapp.ts`: `96181351084`
+- WhatsApp number already in `lib/whatsapp.ts`: `96181492994`
 - All components must match existing dark glamour theme (black/gold/rose-gold)
 - TypeScript strict mode — all new code fully typed
 - Do not break existing GSAP/Three.js animations

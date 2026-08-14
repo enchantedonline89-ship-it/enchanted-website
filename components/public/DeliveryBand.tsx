@@ -5,7 +5,7 @@
  */
 const FACTS = [
   { term: "Payment", detail: "Cash on delivery, everywhere in Lebanon" },
-  { term: "Delivery", detail: "$3 in Beirut, $4 outside" },
+  { term: "Delivery", detail: "$4 anywhere in Lebanon" },
   { term: "Ordering", detail: "Confirmed over WhatsApp, usually same day" },
 ] as const
 

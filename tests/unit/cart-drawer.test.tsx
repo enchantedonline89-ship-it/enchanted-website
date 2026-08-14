@@ -146,6 +146,19 @@ describe('CartDrawer — state machine', () => {
     expect(within(drawer()).queryByRole('button', { name: CONTINUE })).not.toBeInTheDocument()
   })
 
+  it('links the empty-cart Shop All action to the catalog and closes the drawer', async () => {
+    const user = userEvent.setup()
+    renderDrawer()
+    await openCart(user)
+
+    const cartDialog = drawer()
+    const shopAll = within(cartDialog).getByRole('link', { name: /shop all/i })
+    expect(shopAll).toHaveAttribute('href', '/#catalog')
+
+    await user.click(shopAll)
+    expect(cartDialog.parentElement).toHaveAttribute('inert')
+  })
+
   it('lists each line with its name and chosen size', async () => {
     const user = userEvent.setup()
     renderDrawer()
@@ -295,7 +308,7 @@ describe('CartDrawer — state machine', () => {
 // ─── Money ────────────────────────────────────────────────────────────────────
 
 describe('CartDrawer — cart maths', () => {
-  it('adds $3 delivery for Beirut', async () => {
+  it('adds $4 delivery for Beirut', async () => {
     const user = userEvent.setup()
     renderDrawer()
     await seed(user, ['p-stiletto'])
@@ -305,8 +318,8 @@ describe('CartDrawer — cart maths', () => {
     const totals = within(drawer())
     // $89.99 appears twice: once on the line, once as the subtotal.
     expect(totals.getAllByText('$89.99')).toHaveLength(2)
-    expect(totals.getByText('$3.00')).toBeInTheDocument()
-    expect(totals.getByText('$92.99')).toBeInTheDocument()
+    expect(totals.getByText('$4.00')).toBeInTheDocument()
+    expect(totals.getByText('$93.99')).toBeInTheDocument()
   })
 
   it('adds $4 delivery for outside Beirut and asks for the town', async () => {
@@ -338,8 +351,8 @@ describe('CartDrawer — cart maths', () => {
     await openCart(user)
     await chooseArea(user, 'Beirut')
 
-    // 89.99 + 29.99 = 119.98, + $3 delivery = 122.98
-    expect(within(drawer()).getByText('$122.98')).toBeInTheDocument()
+    // 89.99 + 29.99 = 119.98, + $4 delivery = 123.98
+    expect(within(drawer()).getByText('$123.98')).toBeInTheDocument()
 
     await user.click(
       within(drawer()).getByRole('button', {
@@ -347,8 +360,8 @@ describe('CartDrawer — cart maths', () => {
       }),
     )
 
-    // 89.99 + 59.98 = 149.97, + $3 = 152.97
-    await waitFor(() => expect(within(drawer()).getByText('$152.97')).toBeInTheDocument())
+    // 89.99 + 59.98 = 149.97, + $4 = 153.97
+    await waitFor(() => expect(within(drawer()).getByText('$153.97')).toBeInTheDocument())
     expect(readCart().total).toBe(3)
   })
 
@@ -399,9 +412,9 @@ describe('CartDrawer — order submission', () => {
     const payload = JSON.parse(init.body as string)
     expect(payload).toMatchObject({
       area: 'beirut',
-      delivery_fee: 3,
+      delivery_fee: 4,
       subtotal: 89.99,
-      total: 92.99,
+      total: 93.99,
       full_name: 'Nour Khalil',
       phone: '03 456 789',
       delivery_address: 'Hamra Street, Building 4',
@@ -440,7 +453,7 @@ describe('CartDrawer — order submission', () => {
   it('surfaces the API error message and stays on the details form', async () => {
     const user = userEvent.setup()
     fetchMock.mockResolvedValue(
-      jsonResponse({ error: 'Delivery fee for Beirut must be $3' }, { ok: false, status: 400 }),
+      jsonResponse({ error: 'Delivery fee for Beirut must be $4' }, { ok: false, status: 400 }),
     )
     await reachDetails(user)
     await fillDetails(user)
@@ -448,7 +461,7 @@ describe('CartDrawer — order submission', () => {
 
     await waitFor(() =>
       expect(within(drawer()).getByRole('alert')).toHaveTextContent(
-        'Delivery fee for Beirut must be $3',
+        'Delivery fee for Beirut must be $4',
       ),
     )
     expect(screen.getByRole('dialog', { name: /delivery details/i })).toBeInTheDocument()
@@ -526,7 +539,7 @@ describe('CartDrawer — owner notification handoff', () => {
     expect(text).toContain('Nour Khalil')
     expect(text).toContain('Hamra Street, Building 4')
     expect(text).toContain('Velvet Gold-Strap Stiletto')
-    expect(text).toContain('💰 TOTAL: $92.99')
+    expect(text).toContain('💰 TOTAL: $93.99')
   })
 
   it('never addresses the customer’s own number from the success screen', async () => {

@@ -39,7 +39,7 @@ export default function ContactPage() {
           <h2>WhatsApp</h2>
           <p className="mb-4">Our primary contact method.</p>
           <a
-            href="https://wa.me/96181351084"
+            href="https://wa.me/96181492994"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-ghost"
@@ -47,8 +47,8 @@ export default function ContactPage() {
             Chat on WhatsApp
           </a>
           <p className="mt-4">
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
-              +961 81 351 084
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
+              +961 81 492 994
             </a>
           </p>
         </section>

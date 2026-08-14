@@ -47,7 +47,7 @@ export default function ReturnsPage() {
           <h2>How to start a return</h2>
           <p>
             Contact us via{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
             within 10 days with your order reference number; we will arrange pickup or confirm a drop-off point.
@@ -79,8 +79,8 @@ export default function ReturnsPage() {
           <h2>Contact</h2>
           <p>
             Message us on WhatsApp:{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
-              +961 81 351 084
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
+              +961 81 492 994
             </a>
           </p>
         </section>

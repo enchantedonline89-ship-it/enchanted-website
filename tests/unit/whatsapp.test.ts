@@ -8,7 +8,7 @@ import {
 } from '@/lib/whatsapp'
 
 /** The shop's WhatsApp number. Changing this silently breaks every order handoff. */
-const SHOP_NUMBER = '96181351084'
+const SHOP_NUMBER = '96181492994'
 
 /** wa.me/<recipient> — the number the message is actually addressed to. */
 function recipientOf(url: string): string {
@@ -33,8 +33,8 @@ function makeOrder(overrides: Partial<OrderPayload> = {}): OrderPayload {
     order_notes: null,
     items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 }],
     subtotal: 179.98,
-    delivery_fee: 3,
-    total: 182.98,
+    delivery_fee: 4,
+    total: 183.98,
     ...overrides,
   }
 }
@@ -42,7 +42,7 @@ function makeOrder(overrides: Partial<OrderPayload> = {}): OrderPayload {
 // ─── The phone constant ───────────────────────────────────────────────────────
 
 describe('WHATSAPP_PHONE', () => {
-  it('is pinned to the shop number 96181351084', () => {
+  it('is pinned to the shop number 96181492994', () => {
     expect(WHATSAPP_PHONE).toBe(SHOP_NUMBER)
   })
 

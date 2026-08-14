@@ -41,8 +41,8 @@ export default function TermsPage() {
           <h2>Who we are</h2>
           <p>
             Enchanted Style is a Lebanese women&apos;s fashion brand. We sell clothing, shoes, and accessories and process orders via WhatsApp. Contact us at{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
-              wa.me/96181351084
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
+              wa.me/96181492994
             </a>.
           </p>
         </section>
@@ -97,8 +97,8 @@ export default function TermsPage() {
           <h2>Contact</h2>
           <p>
             Message us on WhatsApp:{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
-              +961 81 351 084
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
+              +961 81 492 994
             </a>
           </p>
         </section>

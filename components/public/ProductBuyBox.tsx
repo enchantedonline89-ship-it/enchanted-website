@@ -155,7 +155,7 @@ export default function ProductBuyBox({
           <dt>Delivery</dt>
           <dd className="tnum text-right text-ink">
             <Link href="/shipping" className="link-grow inline-flex min-h-11 items-center">
-              $3 in Beirut, $4 elsewhere in Lebanon
+              $4 anywhere in Lebanon
             </Link>
           </dd>
         </div>

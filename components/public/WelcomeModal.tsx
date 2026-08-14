@@ -19,7 +19,7 @@ const SLIDES = [
   },
   {
     title: "Tell us where to deliver",
-    body: "Beirut is $3, anywhere else in Lebanon is $4. You give a name, a number and an address, nothing more.",
+    body: "Delivery is $4 anywhere in Lebanon. You give a name, a number and an address, nothing more.",
   },
   {
     title: "We confirm on WhatsApp",

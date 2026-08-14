@@ -20,11 +20,11 @@ check sizes and prices, and hand an order to the owner without a payment barrier
 2. Sign in (Google or email) to attach the order to an account.
 3. Fill delivery details: name, phone, address, city, area.
 4. The order is written to the database, then opened as a prefilled WhatsApp
-   message to +961 81 351 084. The owner confirms and arranges delivery.
+   message to +961 81 492 994. The owner confirms and arranges delivery.
 5. Payment is cash on delivery.
 
-Delivery fee is $3 inside Beirut and $4 outside. This pair is validated
-server-side against the selected area and must stay consistent everywhere.
+Delivery is a flat $4 anywhere in Lebanon. This fee is validated server-side
+and must stay consistent everywhere.
 
 ## Catalog shape
 
@@ -56,7 +56,7 @@ a rule. Gold that must be read is the logo's own shadow tone, `#7a5518`.
 
 ## Constraints that are not negotiable
 
-- WhatsApp number `96181351084` lives only in `lib/whatsapp.ts`.
+- WhatsApp number `96181492994` lives only in `lib/whatsapp.ts`.
 - Admin authority is `process.env.ADMIN_EMAIL` server-side and the RLS policies
   keyed on `LOWER(auth.email())`. Design never touches that gate.
 - Product photography comes from the owner. The design cannot assume studio

@@ -194,9 +194,9 @@ export default async function ProductPage({
               </summary>
               <div className="prose-paper mt-4 text-[0.875rem]">
                 <p>
-                  Delivery is $3 in Beirut and $4 everywhere else in Lebanon, 1 to 3
-                  business days in Beirut and 2 to 5 elsewhere. You pay the driver in
-                  cash when it arrives.
+                  Delivery is $4 anywhere in Lebanon. It usually takes 1 to 3 business
+                  days in Beirut and 2 to 5 elsewhere. You pay the driver in cash when
+                  it arrives.
                 </p>
                 <p>
                   You have 10 days from receipt to return anything unworn and unwashed

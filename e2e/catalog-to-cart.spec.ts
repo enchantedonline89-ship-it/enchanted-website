@@ -51,7 +51,7 @@ test.describe('Catalog and cart', () => {
     ).toBeVisible()
   })
 
-  test('delivery area drives the fee shown in the cart', async ({ page }) => {
+  test('delivery is $4 in both delivery areas', async ({ page }) => {
     const card = page.locator('article').filter({ hasText: 'Crystal Hair Claw Clip' }).first()
     await card.getByRole('button', { name: /add to cart/i }).click()
     await page.getByRole('button', { name: /cart/i }).first().click()
@@ -60,11 +60,21 @@ test.describe('Catalog and cart', () => {
     await expect(drawer.getByRole('button', { name: /continue to delivery details/i })).toBeDisabled()
 
     await drawer.getByRole('button', { name: /^Beirut/ }).click()
-    await expect(drawer.getByText('$3.00')).toBeVisible()
+    await expect(drawer.getByText('$4.00')).toBeVisible()
 
     await drawer.getByRole('button', { name: /^Outside Beirut/ }).click()
     await expect(drawer.getByText('$4.00')).toBeVisible()
     await expect(drawer.getByLabel(/town or city/i)).toBeVisible()
+  })
+
+  test('empty-cart Shop All closes the drawer and opens the catalog', async ({ page }) => {
+    await page.getByRole('button', { name: /cart/i }).first().click()
+
+    const drawer = page.getByRole('dialog', { name: /your cart/i })
+    await drawer.getByRole('link', { name: /shop all/i }).click()
+
+    await expect(page).toHaveURL(/#catalog$/)
+    await expect(drawer).toBeHidden()
   })
 
   test('checkout is gated behind sign-in for a signed-out visitor', async ({ page }) => {

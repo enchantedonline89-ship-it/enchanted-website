@@ -77,7 +77,7 @@ export default function GlobalError({
               Try again
             </button>
             <a
-              href="https://wa.me/96181351084"
+              href="https://wa.me/96181492994"
               style={{
                 padding: "0.9375rem 2rem",
                 fontSize: "0.75rem",

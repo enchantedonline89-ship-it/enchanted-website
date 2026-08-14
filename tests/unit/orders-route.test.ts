@@ -60,12 +60,12 @@ function validBody(overrides: Record<string, unknown> = {}) {
     area: 'beirut',
     city: null,
     order_notes: null,
-    delivery_fee: 3,
+    delivery_fee: 4,
     items: [
       { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 },
     ],
     subtotal: 179.98,
-    total: 182.98,
+    total: 183.98,
     ...overrides,
   }
 }
@@ -127,14 +127,14 @@ describe('POST /api/orders — accepted orders', () => {
           { product_id: 'prod-clip', name: 'Crystal Hair Claw Clip', size: null, qty: 1, price: 29.99 },
         ],
         subtotal: 29.99,
-        total: 32.99,
+        total: 33.99,
       }),
     )
     expect(status).toBe(200)
   })
 
   it('tolerates floating-point drift up to $0.01 on the total', async () => {
-    const { status } = await post(validBody({ total: 182.985 }))
+    const { status } = await post(validBody({ total: 183.985 }))
     expect(status).toBe(200)
   })
 })
@@ -182,7 +182,7 @@ describe('POST /api/orders — field validation', () => {
     ['city over 100 chars', { city: 'c'.repeat(101) }],
     ['order_notes over 500 chars', { order_notes: 'n'.repeat(501) }],
     ['subtotal negative', { subtotal: -1, total: 2 }],
-    ['subtotal not a number', { subtotal: 'free', total: 3 }],
+    ['subtotal not a number', { subtotal: 'free', total: 4 }],
     ['total not a number', { total: 'free' }],
   ])('rejects %s', async (_label, patch) => {
     const { status, json } = await post(validBody(patch))
@@ -209,13 +209,13 @@ describe('POST /api/orders — field validation', () => {
 describe('POST /api/orders — item validation', () => {
   it.each([
     ['items not an array', { items: 'stiletto' }],
-    ['items empty', { items: [], subtotal: 0, total: 3 }],
+    ['items empty', { items: [], subtotal: 0, total: 4 }],
     [
       'items over 50 entries',
       {
         items: Array.from({ length: 51 }, () => ({ name: 'x', size: null, qty: 1, price: 1 })),
         subtotal: 51,
-        total: 54,
+        total: 55,
       },
     ],
     ['item not an object', { items: [null] }],
@@ -238,9 +238,9 @@ describe('POST /api/orders — item validation', () => {
 
 // ─── Delivery fee / area cross-validation ─────────────────────────────────────
 
-describe('POST /api/orders — delivery fee is bound to the area', () => {
-  it('accepts $3 for beirut', async () => {
-    const { status } = await post(validBody({ area: 'beirut', delivery_fee: 3, total: 182.98 }))
+describe('POST /api/orders — flat delivery fee', () => {
+  it('accepts $4 for Beirut', async () => {
+    const { status } = await post(validBody({ area: 'beirut', delivery_fee: 4, total: 183.98 }))
     expect(status).toBe(200)
   })
 
@@ -251,7 +251,7 @@ describe('POST /api/orders — delivery fee is bound to the area', () => {
     expect(status).toBe(200)
   })
 
-  it('rejects the cheaper $3 fee on an outside-Beirut order (fee manipulation)', async () => {
+  it('rejects a $3 fee on an outside-Beirut order', async () => {
     const { status, json } = await post(
       validBody({ area: 'outside', city: 'Jounieh', delivery_fee: 3, total: 182.98 }),
     )
@@ -259,15 +259,15 @@ describe('POST /api/orders — delivery fee is bound to the area', () => {
     expect(json.error).toMatch(/must be \$4/)
   })
 
-  it('rejects the $4 fee on a Beirut order', async () => {
+  it('rejects a $3 fee on a Beirut order', async () => {
     const { status, json } = await post(
-      validBody({ area: 'beirut', delivery_fee: 4, total: 183.98 }),
+      validBody({ area: 'beirut', delivery_fee: 3, total: 182.98 }),
     )
     expect(status).toBe(400)
-    expect(json.error).toMatch(/must be \$3/)
+    expect(json.error).toMatch(/must be \$4/)
   })
 
-  it.each([0, 1, 2, 5, 2.99, -3, Number.NaN, Infinity])(
+  it.each([0, 1, 2, 3, 5, 2.99, -3, Number.NaN, Infinity])(
     'rejects an off-menu delivery fee of %s',
     async fee => {
       const { status } = await post(validBody({ delivery_fee: fee, total: 179.98 + (fee || 0) }))
@@ -275,7 +275,7 @@ describe('POST /api/orders — delivery fee is bound to the area', () => {
     },
   )
 
-  it('rejects a delivery fee supplied as a string that is not $3/$4', async () => {
+  it('rejects a delivery fee supplied as a string instead of $4', async () => {
     const { status } = await post(validBody({ delivery_fee: '0', total: 179.98 }))
     expect(status).toBe(400)
   })
@@ -405,7 +405,7 @@ describe('POST /api/orders — user_id is taken from the session, never the requ
   })
 
   it('does not touch the database when validation fails', async () => {
-    await post(validBody({ area: 'outside', delivery_fee: 3 }))
+    await post(validBody({ area: 'beirut', delivery_fee: 3, total: 182.98 }))
     expect(h.from).not.toHaveBeenCalled()
     expect(h.insert).not.toHaveBeenCalled()
   })
@@ -434,8 +434,8 @@ describe('prices are derived server-side, never taken from the client', () => {
           { product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 1 },
         ],
         subtotal: 1,
-        delivery_fee: 3,
-        total: 4,
+        delivery_fee: 4,
+        total: 5,
       }),
       { ip: freshIp() },
     )
@@ -444,18 +444,18 @@ describe('prices are derived server-side, never taken from the client', () => {
     const row = insertedRow()
     expect((row.items as Array<{ price: number }>)[0].price).toBe(89.99)
     expect(row.subtotal).toBe(89.99)
-    expect(row.total).toBe(92.99)
+    expect(row.total).toBe(93.99)
   })
 
   it('ignores a forged subtotal and total entirely', async () => {
     const { status } = await post(
-      validBody({ subtotal: 1, total: 4 }),
+      validBody({ subtotal: 1, total: 5 }),
       { ip: freshIp() },
     )
     expect(status).toBe(200)
     // Fixture is 2 x $89.99 to Beirut.
     expect(insertedRow().subtotal).toBe(179.98)
-    expect(insertedRow().total).toBe(182.98)
+    expect(insertedRow().total).toBe(183.98)
   })
 
   it('takes the product name from the catalog, not the request', async () => {

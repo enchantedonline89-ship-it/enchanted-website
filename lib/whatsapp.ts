@@ -2,7 +2,7 @@
 // ENCHANTED STYLE — WhatsApp Integration
 // ============================================================
 
-export const WHATSAPP_PHONE = '96181351084'
+export const WHATSAPP_PHONE = '96181492994'
 
 /**
  * Absolute origin used when a message needs to carry a shareable link.

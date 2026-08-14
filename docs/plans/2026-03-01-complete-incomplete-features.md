@@ -309,7 +309,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 // ENCHANTED STYLE — WhatsApp Integration
 // ============================================================
 
-export const WHATSAPP_PHONE = '96181351084'
+export const WHATSAPP_PHONE = '96181492994'
 
 /** Build a WhatsApp URL with product pre-fill message */
 export function buildWhatsAppURL(productName: string): string {
@@ -855,7 +855,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             {/* WhatsApp CTA (desktop) */}
             <a
-              href="https://wa.me/96181351084"
+              href="https://wa.me/96181492994"
               target="_blank"
               rel="noopener noreferrer"
               data-hover

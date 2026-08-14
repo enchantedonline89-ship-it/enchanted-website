@@ -2,7 +2,7 @@ import JsonLd from "./JsonLd"
 import { SITE_URL, SITE_NAME, absoluteUrl } from "./site"
 
 /** Given, verified contact facts only. Do not add anything not confirmed. */
-const WHATSAPP_E164 = "+96181351084"
+const WHATSAPP_E164 = "+96181492994"
 const INSTAGRAM_URL = "https://www.instagram.com/enchanted.style_"
 
 /**

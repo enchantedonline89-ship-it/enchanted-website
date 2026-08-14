@@ -82,7 +82,7 @@ export default function SizeGuidePage() {
           <h2>Fit tips</h2>
           <p>
             Not sure which size to order? Send us your measurements on{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
             and we&apos;ll tell you exactly what to choose.
@@ -92,7 +92,7 @@ export default function SizeGuidePage() {
         <section>
           <h2>Still not sure?</h2>
           <a
-            href="https://wa.me/96181351084"
+            href="https://wa.me/96181492994"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-ghost"

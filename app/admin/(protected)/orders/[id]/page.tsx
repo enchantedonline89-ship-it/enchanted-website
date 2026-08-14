@@ -22,11 +22,11 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       delivery_address: '123 Main St, Apt 4',
       city: null,
       area: 'beirut',
-      delivery_fee: 3,
+      delivery_fee: 4,
       order_notes: null,
       items: [{ name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 1, price: 89.99 }],
       subtotal: 89.99,
-      total: 92.99,
+      total: 93.99,
       status: 'pending',
       created_at: new Date().toISOString(),
     }

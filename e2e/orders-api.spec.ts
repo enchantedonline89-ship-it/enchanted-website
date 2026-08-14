@@ -17,10 +17,10 @@ function validOrder(overrides: Record<string, unknown> = {}) {
     area: 'beirut',
     city: null,
     order_notes: null,
-    delivery_fee: 3,
+    delivery_fee: 4,
     items: [{ product_id: 'prod-stiletto', name: 'Velvet Gold-Strap Stiletto', size: '38', qty: 2, price: 89.99 }],
     subtotal: 179.98,
-    total: 182.98,
+    total: 183.98,
     ...overrides,
   }
 }
@@ -32,7 +32,7 @@ test.describe('POST /api/orders validation', () => {
     expect((await res.json()).error).toMatch(/sign in/i)
   })
 
-  test('rejects the $3 Beirut fee on an outside-Beirut order', async ({ request }) => {
+  test('rejects a non-$4 fee on an outside-Beirut order', async ({ request }) => {
     const res = await request.post('/api/orders', {
       headers: freshHeaders(),
       data: validOrder({ area: 'outside', city: 'Jounieh', delivery_fee: 3 }),
@@ -41,10 +41,10 @@ test.describe('POST /api/orders validation', () => {
     expect((await res.json()).error).toMatch(/must be \$4/)
   })
 
-  test('rejects the $4 fee on a Beirut order', async ({ request }) => {
+  test('rejects a non-$4 fee on a Beirut order', async ({ request }) => {
     const res = await request.post('/api/orders', {
       headers: freshHeaders(),
-      data: validOrder({ delivery_fee: 4, total: 183.98 }),
+      data: validOrder({ delivery_fee: 3, total: 182.98 }),
     })
     expect(res.status()).toBe(400)
   })
@@ -65,7 +65,7 @@ test.describe('POST /api/orders validation', () => {
   test('rejects an empty cart', async ({ request }) => {
     const res = await request.post('/api/orders', {
       headers: freshHeaders(),
-      data: validOrder({ items: [], subtotal: 0, total: 3 }),
+      data: validOrder({ items: [], subtotal: 0, total: 4 }),
     })
     expect(res.status()).toBe(400)
   })

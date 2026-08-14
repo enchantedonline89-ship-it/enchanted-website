@@ -33,14 +33,13 @@ export default function ShippingPage() {
       <PageShell
         title="Shipping and delivery"
         standfirst="Where we deliver, what it costs, and how long an order usually takes to arrive."
-        meta="Last updated March 2026"
+        meta="Last updated August 2026"
       >
       <div>
         <section>
           <h2>Delivery areas and fees</h2>
           <ul>
-            <li>Beirut: $3</li>
-            <li>Everywhere else in Lebanon: $4</li>
+            <li>Anywhere in Lebanon: $4</li>
           </ul>
         </section>
 
@@ -58,7 +57,7 @@ export default function ShippingPage() {
           <h2>Order tracking</h2>
           <p>
             Message us on{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
             with your order reference number for a status update.
@@ -69,8 +68,8 @@ export default function ShippingPage() {
           <h2>Questions?</h2>
           <p>
             Message us on WhatsApp:{' '}
-            <a href="https://wa.me/96181351084" className="text-ink hover:underline">
-              +961 81 351 084
+            <a href="https://wa.me/96181492994" className="text-ink hover:underline">
+              +961 81 492 994
             </a>
           </p>
         </section>

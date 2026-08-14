@@ -97,14 +97,14 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
     }
   }
 
-  // delivery_fee — must be exactly $3 or $4
-  const VALID_DELIVERY_FEES = [3, 4]
+  // delivery_fee — one flat rate everywhere in Lebanon
+  const VALID_DELIVERY_FEES = [4]
   const deliveryFee = Number(body.delivery_fee)
   if (!Number.isFinite(deliveryFee) || !VALID_DELIVERY_FEES.includes(deliveryFee)) {
-    errors.push({ field: 'delivery_fee', message: 'Delivery fee must be $3 (Beirut) or $4 (outside)' })
+    errors.push({ field: 'delivery_fee', message: 'Delivery fee must be $4 anywhere in Lebanon' })
   } else if (typeof body.area === 'string' && VALID_AREAS.includes(body.area)) {
     // Cross-validate: fee must match the selected area to prevent fee manipulation
-    const expectedFee = body.area === 'beirut' ? 3 : 4
+    const expectedFee = 4
     if (deliveryFee !== expectedFee) {
       errors.push({ field: 'delivery_fee', message: `Delivery fee for ${body.area === 'beirut' ? 'Beirut' : 'outside Beirut'} must be $${expectedFee}` })
     }
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
   const subtotal = Number(
     items.reduce((sum, i) => sum + i.price * i.qty, 0).toFixed(2),
   )
-  const deliveryFee = body.area === 'beirut' ? 3 : 4
+  const deliveryFee = 4
   const total = Number((subtotal + deliveryFee).toFixed(2))
 
   try {

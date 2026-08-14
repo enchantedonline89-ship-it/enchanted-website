@@ -17,7 +17,7 @@ export default function CategoryFilter({
   onChange: (slug: string) => void
   counts: Record<string, number>
 }) {
-  const items = [{ id: "all", name: "Everything", slug: "all" }, ...categories]
+  const items = [{ id: "all", name: "Shop All", slug: "all" }, ...categories]
 
   return (
     <div className="track-scroll -mx-5 overflow-x-auto px-5 lg:mx-0 lg:px-0">

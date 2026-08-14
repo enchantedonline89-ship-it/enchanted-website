@@ -43,7 +43,7 @@ export default function CartDrawer() {
     (sum, item) => sum + (item.product.price ?? 0) * item.quantity,
     0,
   )
-  const deliveryFee = area === "beirut" ? 3 : area === "outside" ? 4 : 0
+  const deliveryFee = area === null ? 0 : 4
   const total = subtotal + deliveryFee
 
   const dialogRef = useOverlay<HTMLDivElement>(isOpen, handleClose)
@@ -259,9 +259,9 @@ export default function CartDrawer() {
                     <p className="t-body text-[0.9375rem]">
                       Pick a size on any piece in the catalog and it will land here.
                     </p>
-                    <button onClick={handleClose} className="btn btn-ghost mt-2">
-                      Browse the catalog
-                    </button>
+                    <Link href="/#catalog" onClick={handleClose} className="btn btn-ghost mt-2">
+                      Shop All
+                    </Link>
                   </div>
                 ) : (
                   <ul>
@@ -358,7 +358,7 @@ export default function CartDrawer() {
                         }`}
                       >
                         <span className="block text-[0.8125rem]">Beirut</span>
-                        <span className="tnum t-meta block">$3</span>
+                        <span className="tnum t-meta block">$4</span>
                       </button>
                       <button
                         type="button"
