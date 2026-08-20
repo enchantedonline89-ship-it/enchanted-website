@@ -9,12 +9,15 @@ In the SQL Editor, run these files in order:
 2. `supabase/product-detail-migration.sql`
 3. `supabase/orders-migration.sql`
 4. `supabase/admin-rls-ensure.sql`
-5. `supabase/analytics-views.sql`
+5. `supabase/site-settings-migration.sql`
+6. `supabase/promotions-events-migration.sql`
+7. `supabase/order-tracking-migration.sql`
+8. `supabase/analytics-views.sql`
 
-The final two files are the canonical security and analytics definitions and
-are safe to re-run. The analytics script deliberately does not refresh its
-materialized view inside order transactions; refresh it from the protected
-admin dashboard or a scheduled job.
+The migrations are idempotent and safe to re-run. Apply the order-tracking
+migration before deploying code that returns customer order numbers. Analytics
+uses indexed live views, so order inserts and status updates never trigger a
+materialized-view refresh.
 
 Keep customer sign-ups enabled under Authentication > Providers > Email.
 Checkout requires a verified customer account. If Google OAuth is enabled, add
@@ -85,8 +88,9 @@ vercel --prod
 - The owner can create/edit/delete a product and the audit log records the change.
 - A signed-out visitor is redirected away from protected admin and order pages.
 - A normal customer cannot write catalog rows or upload product images.
-- An order insert and status update both succeed before analytics are refreshed.
-- Manual analytics refresh succeeds and the dashboard reflects the test order.
+- An order insert returns a human-readable order number.
+- Order tracking succeeds only with the matching checkout email.
+- A completed order appears in the analytics dashboard without a manual refresh.
 - `/sitemap.xml` includes active product URLs; admin and reset pages are noindex.
 - Phone (390px), tablet (768/820px), and desktop layouts have no horizontal overflow.
 

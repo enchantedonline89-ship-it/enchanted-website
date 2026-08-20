@@ -140,7 +140,7 @@ describe('POST /api/orders — accepted orders', () => {
     expect(status).toBe(200)
     expect(json.id).toBeTruthy()
     expect(json.order_number).toBe('ES-2608-001001')
-    expect(h.select).toHaveBeenCalledWith('id, order_number')
+    expect(h.select).toHaveBeenCalledWith('*')
   })
 
   it('accepts a well-formed outside-Beirut order at the $4 fee', async () => {

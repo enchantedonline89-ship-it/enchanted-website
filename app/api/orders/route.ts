@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
         total,
         status: 'pending',
       })
-      .select('id, order_number')
+      .select('*')
       .single()
 
     if (error) {
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       id: data.id,
-      order_number: data.order_number,
+      order_number: typeof data.order_number === 'string' ? data.order_number : null,
       items,
       subtotal,
       total,

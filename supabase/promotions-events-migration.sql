@@ -38,6 +38,7 @@ CREATE TRIGGER update_promotions_updated_at
 ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "promotions_public_read" ON promotions;
+DROP POLICY IF EXISTS "promotions_authenticated_read" ON promotions;
 DROP POLICY IF EXISTS "promotions_admin_select" ON promotions;
 DROP POLICY IF EXISTS "promotions_admin_insert" ON promotions;
 DROP POLICY IF EXISTS "promotions_admin_update" ON promotions;
@@ -47,6 +48,14 @@ DROP POLICY IF EXISTS "promotions_admin_delete" ON promotions;
 -- inactive campaign plans remain private to the owner.
 CREATE POLICY "promotions_public_read" ON promotions
   FOR SELECT TO anon
+  USING (
+    is_active = TRUE
+    AND starts_at <= NOW()
+    AND (ends_at IS NULL OR ends_at > NOW())
+  );
+
+CREATE POLICY "promotions_authenticated_read" ON promotions
+  FOR SELECT TO authenticated
   USING (
     is_active = TRUE
     AND starts_at <= NOW()

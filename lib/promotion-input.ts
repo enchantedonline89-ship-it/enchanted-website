@@ -44,7 +44,7 @@ export function validatePromotionInput(input: unknown): Result {
 
   const discountPercent = campaignType === 'discount' ? Number(body.discount_percent) : null
   if (campaignType === 'discount' &&
-      (!Number.isFinite(discountPercent) || Number(discountPercent) <= 0 || Number(discountPercent) > 100)) {
+      (!Number.isFinite(Number(discountPercent)) || Number(discountPercent) <= 0 || Number(discountPercent) > 100)) {
     return { error: 'Discount must be greater than 0% and no more than 100%.' }
   }
 
