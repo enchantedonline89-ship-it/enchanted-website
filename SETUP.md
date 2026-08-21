@@ -1,109 +1,104 @@
-# Enchanted Style — Setup and deployment
+# Enchanted — Cloudflare production setup
 
-## 1. Create Supabase
+## 1. Platform resources
 
-Create a Supabase project in a region appropriate for customers in Lebanon.
-In the SQL Editor, run these files in order:
+The Worker expects these bindings from `wrangler.jsonc`:
 
-1. `supabase/schema.sql`
-2. `supabase/product-detail-migration.sql`
-3. `supabase/orders-migration.sql`
-4. `supabase/admin-rls-ensure.sql`
-5. `supabase/site-settings-migration.sql`
-6. `supabase/promotions-events-migration.sql`
-7. `supabase/order-tracking-migration.sql`
-8. `supabase/analytics-views.sql`
+- D1 database `enchanted-production` as `DB`
+- R2 bucket `enchanted-product-media` as `MEDIA`
+- Queue `enchanted-email` as `EMAIL_QUEUE`
+- Dead-letter queue `enchanted-email-dlq`
 
-The migrations are idempotent and safe to re-run. Apply the order-tracking
-migration before deploying code that returns customer order numbers. Analytics
-uses indexed live views, so order inserts and status updates never trigger a
-materialized-view refresh.
+Create any missing resources, then apply the versioned schema:
 
-Keep customer sign-ups enabled under Authentication > Providers > Email.
-Checkout requires a verified customer account. If Google OAuth is enabled, add
-the deployed `/auth/callback` URL to the provider redirect allowlist.
+```powershell
+npx wrangler d1 migrations apply enchanted-production --remote
+```
 
-Create the admin account as `Enchantedonline89@gmail.com`. The current RLS
-policies are pinned to this address. Changing it requires updating and re-running
-`supabase/admin-rls-ensure.sql` as well as changing the application environment
-variables.
+The schema contains Better Auth, owner-scoped addresses, the empty catalog,
+color/size stock variants, promotions, orders, inventory safeguards, email
+events, audit logs, and recommendation statistics. Product images are stored in
+R2; catalog data and stock are stored in D1.
 
-Create a public Storage bucket named `product-images`, then run
-`supabase/admin-rls-ensure.sql`. Its policies allow public reads but restrict
-INSERT, UPDATE, and DELETE to the named admin. Never grant uploads to every
-authenticated customer.
+## 2. Authentication
 
-## 2. Configure the application
+Set these Worker secrets without committing their values:
 
-Copy `.env.example` to `.env.local` and set at least:
+```powershell
+npx wrangler secret put BETTER_AUTH_SECRET
+npx wrangler secret put BETTER_AUTH_URL
+```
+
+`BETTER_AUTH_URL` is the final HTTPS origin. The fixed admin authorization email
+is `Enchantedonline89@gmail.com`. Customers must create an account before
+checkout. To enable Google sign-in, create a Google OAuth web client and set:
+
+```powershell
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+```
+
+Register `<origin>/api/auth/callback/google` as an authorized redirect URI.
+
+## 3. Transactional email
+
+Create a Resend account, verify a sending domain, and configure:
+
+```powershell
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM_EMAIL
+npx wrangler secret put RESEND_WEBHOOK_SECRET
+```
+
+Point the Resend webhook to `<origin>/api/webhooks/resend`. The queue retries
+temporary failures and sends exhausted jobs to the dead-letter queue. Order
+receipt and every status change include the public order number and the store's
+WhatsApp contact, never a prefilled customer order message.
+
+## 4. Optional analytics and error monitoring
+
+PostHog and Sentry remain disabled while their keys are unset. Browser analytics
+and replay start only after consent, and all form inputs/text are masked.
+
+PostHog public build variables:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-ADMIN_EMAIL=Enchantedonline89@gmail.com
-NEXT_PUBLIC_ADMIN_EMAIL=Enchantedonline89@gmail.com
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_INGEST_HOST=https://eu.i.posthog.com
+NEXT_PUBLIC_POSTHOG_ASSET_HOST=https://eu-assets.i.posthog.com
 ```
 
-The service-role key is server-only and must never use a `NEXT_PUBLIC_` prefix.
-Keep `ENABLE_MOCK_CATALOG=false` on the customer-facing deployment so a missing
-backend fails closed instead of advertising demo inventory.
+Admin technical analytics use `POSTHOG_PERSONAL_API_KEY`,
+`POSTHOG_PROJECT_ID`, and `POSTHOG_HOST`. Sentry uses `NEXT_PUBLIC_SENTRY_DSN`
+and `SENTRY_DSN`; the admin issue feed also needs `SENTRY_API_TOKEN`,
+`SENTRY_ORG`, and `SENTRY_PROJECT`.
 
-Install and verify locally:
+## 5. Deploy and verify
 
 ```powershell
-npm install
 npm run lint
-npm test
 npx tsc --noEmit
+npm test
 npm run build
-npm run dev
-```
-
-The shop is at `http://localhost:3000`; admin login is at
-`http://localhost:3000/admin/login`.
-
-## 3. Deploy to Cloudflare Workers
-
-The repository is configured for Cloudflare Workers through OpenNext. Authenticate
-Wrangler, validate the configuration, and add server-side secrets without
-placing their values in `wrangler.jsonc`:
-
-```powershell
-npx wrangler login
-npx wrangler whoami
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npm run cf-typegen
 npm run deploy:cloudflare
 ```
 
-Set `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` in the build environment because Next.js embeds
-public values at build time. Set `ADMIN_EMAIL` and `NEXT_PUBLIC_ADMIN_EMAIL` to
-the owner address. Optional Sentry and PostHog values remain documented in
-`.env.example`.
+After the first deploy, set `NEXT_PUBLIC_SITE_URL` and `BETTER_AUTH_URL` to the
+exact Worker origin and deploy again. Verify the following before accepting
+orders:
 
-`wrangler.jsonc` currently enables `ENABLE_MOCK_CATALOG=true` for the temporary
-client preview. That mode visibly labels demo inventory and blocks indexing.
-Before launch, remove that variable (or set it to `false`) and configure live
-Supabase values so the customer-facing deployment fails closed on data outages.
+- the owner can sign in, create a category, add a product image/color/size stock,
+  and see the item on the storefront;
+- a customer can create an account, save multiple Lebanon addresses, place a
+  $4 cash-on-delivery order, and see its public order number;
+- the order appears under Unconfirmed and follows only valid status transitions;
+- each status change is recorded and sends an email when Resend is configured;
+- Christmas and Ramadan themes are independently toggleable and respect reduced
+  motion;
+- mobile, tablet, and desktop layouts have no horizontal overflow.
 
-## 4. Production verification
+## 6. Custom domain
 
-- The catalog shows only live Supabase inventory.
-- A customer can sign up, choose a valid size, place one order, and see it in order history.
-- The WhatsApp handoff contains the same server-priced items and total.
-- The owner can create/edit/delete a product and the audit log records the change.
-- A signed-out visitor is redirected away from protected admin and order pages.
-- A normal customer cannot write catalog rows or upload product images.
-- An order insert returns a human-readable order number.
-- Order tracking succeeds only with the matching checkout email.
-- A completed order appears in the analytics dashboard without a manual refresh.
-- `/sitemap.xml` includes active product URLs; admin and reset pages are noindex.
-- Phone (390px), tablet (768/820px), and desktop layouts have no horizontal overflow.
-
-## 5. Custom domain
-
-Add the domain as a Cloudflare Worker custom domain, set `NEXT_PUBLIC_SITE_URL`
-to its HTTPS origin, and update the Supabase/Google OAuth redirect allowlists.
-Cloudflare provisions TLS automatically.
+Add the hostname as a Worker custom domain, update `NEXT_PUBLIC_SITE_URL` and
+`BETTER_AUTH_URL`, and update Google/Resend webhook allowlists. Cloudflare
+provisions TLS automatically.

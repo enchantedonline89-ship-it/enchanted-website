@@ -2,7 +2,7 @@ import * as React from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { CartProvider, cartItemKey, useCart, type CartItem } from '@/lib/cart-context'
-import { makeAccessory, makeSizedProduct } from '../helpers/factories'
+import { makeAccessory, makeColorProduct, makeSizedProduct } from '../helpers/factories'
 
 const STORAGE_KEY = 'enchanted-cart'
 
@@ -20,6 +20,18 @@ async function renderCart() {
 function storedItems(): CartItem[] {
   const raw = localStorage.getItem(STORAGE_KEY)
   return raw ? (JSON.parse(raw) as CartItem[]) : []
+}
+
+function makeSharedSizeColorProduct() {
+  const product = makeColorProduct()
+  const blue = product.variants!.find(variant => variant.color_id === 'color-blue')!
+  return {
+    ...product,
+    variants: [
+      ...product.variants!,
+      { ...blue, id: 'variant-blue-36', sku: 'BLUE-36', size: '36' },
+    ],
+  }
 }
 
 afterEach(() => {
@@ -43,6 +55,13 @@ describe('cartItemKey', () => {
 
   it('keys different products under the same size separately', () => {
     expect(cartItemKey('p-1', '38')).not.toBe(cartItemKey('p-2', '38'))
+  })
+
+  it('adds the color only when present, preserving legacy keys', () => {
+    expect(cartItemKey('p-1', '38')).toBe('p-1::38')
+    expect(cartItemKey('p-1', '38', 'color-red')).toBe(
+      'p-1::38::color:color-red',
+    )
   })
 
   it('DOCUMENTS a sentinel collision: a literal "no-size" size collides with null', () => {
@@ -128,6 +147,43 @@ describe('CartProvider — addToCart', () => {
     expect(result.current.items.map(i => i.product.name)).toEqual(['First', 'Second'])
     expect(result.current.items[0].quantity).toBe(2)
   })
+
+  it('merges only the exact same product, size, and color selection', async () => {
+    const product = makeSharedSizeColorProduct()
+    const red = product.colors![0]
+    const blue = product.colors![1]
+    const { result } = await renderCart()
+
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-36',
+    }))
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: blue,
+      selectedVariantId: 'variant-blue-36',
+    }))
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-36',
+    }))
+
+    expect(result.current.items).toHaveLength(2)
+    expect(result.current.items.find(item => item.selectedColor?.id === red.id)?.quantity).toBe(2)
+    expect(result.current.items.find(item => item.selectedColor?.id === blue.id)?.quantity).toBe(1)
+  })
+
+  it('rejects an out-of-stock variant even when called outside the picker UI', async () => {
+    const product = makeColorProduct()
+    const red = product.colors![0]
+    const { result } = await renderCart()
+
+    act(() => result.current.addToCart(product, '37', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-37',
+    }))
+
+    expect(result.current.items).toEqual([])
+  })
 })
 
 // ─── Quantity ─────────────────────────────────────────────────────────────────
@@ -190,6 +246,26 @@ describe('CartProvider — updateQuantity', () => {
     expect(result.current.items.find(i => i.selectedSize === null)!.quantity).toBe(1)
     expect(result.current.items.find(i => i.selectedSize === '38')!.quantity).toBe(4)
   })
+
+  it('updates only the requested color when product and size match', async () => {
+    const product = makeSharedSizeColorProduct()
+    const red = product.colors![0]
+    const blue = product.colors![1]
+    const { result } = await renderCart()
+
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-36',
+    }))
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: blue,
+      selectedVariantId: 'variant-blue-36',
+    }))
+    act(() => result.current.updateQuantity(product.id, '36', 4, red.id))
+
+    expect(result.current.items.find(item => item.selectedColor?.id === red.id)?.quantity).toBe(4)
+    expect(result.current.items.find(item => item.selectedColor?.id === blue.id)?.quantity).toBe(1)
+  })
 })
 
 // ─── Removal ──────────────────────────────────────────────────────────────────
@@ -217,6 +293,26 @@ describe('CartProvider — removeFromCart / clearCart', () => {
 
     expect(result.current.items).toHaveLength(1)
     expect(result.current.items[0].selectedSize).toBe('38')
+  })
+
+  it('removes only the requested color when product and size match', async () => {
+    const product = makeSharedSizeColorProduct()
+    const red = product.colors![0]
+    const blue = product.colors![1]
+    const { result } = await renderCart()
+
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-36',
+    }))
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: blue,
+      selectedVariantId: 'variant-blue-36',
+    }))
+    act(() => result.current.removeFromCart(product.id, '36', red.id))
+
+    expect(result.current.items).toHaveLength(1)
+    expect(result.current.items[0].selectedColor?.id).toBe(blue.id)
   })
 
   it('clearCart empties every line', async () => {
@@ -280,6 +376,23 @@ describe('CartProvider — localStorage persistence', () => {
 
     await waitFor(() => expect(storedItems()).toHaveLength(1))
     expect(storedItems()[0]).toMatchObject({ selectedSize: '38', quantity: 1 })
+  })
+
+  it('persists color and variant identifiers without breaking legacy carts', async () => {
+    const product = makeColorProduct()
+    const red = product.colors![0]
+    const { result } = await renderCart()
+
+    act(() => result.current.addToCart(product, '36', {
+      selectedColor: red,
+      selectedVariantId: 'variant-red-36',
+    }))
+
+    await waitFor(() => expect(storedItems()).toHaveLength(1))
+    expect(storedItems()[0]).toMatchObject({
+      selectedColor: { id: 'color-red', name: 'Ruby Red' },
+      selectedVariantId: 'variant-red-36',
+    })
   })
 
   it('persists removals, so a cleared cart does not resurrect on reload', async () => {

@@ -1,6 +1,8 @@
 import CategoryForm from '@/components/admin/CategoryForm'
+import { requireAdmin } from '@/lib/auth/server'
 
-export default function NewCategoryPage() {
+export default async function NewCategoryPage() {
+  await requireAdmin()
   return (
     <div className="p-4 sm:p-8">
       <div className="mb-8">

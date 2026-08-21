@@ -1,11 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import CategoryForm from '@/components/admin/CategoryForm'
+import { requireAdmin } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
+import { getAdminCategory } from '@/lib/admin-catalog'
 
 export default async function EditCategoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: category } = await supabase.from('categories').select('*').eq('id', id).single()
+  await requireAdmin()
+  const db = await getD1Database()
+  if (!db) throw new Error('Catalog database is unavailable.')
+  const category = await getAdminCategory(db, id)
   if (!category) notFound()
 
   return (

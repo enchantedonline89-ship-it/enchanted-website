@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Auth is faked: Supabase no longer resolves.
+// Auth is isolated so the modal can be tested without a live Better Auth session.
 const signOut = vi.hoisted(() => vi.fn())
 const routerReplace = vi.hoisted(() => vi.fn())
 const routerRefresh = vi.hoisted(() => vi.fn())

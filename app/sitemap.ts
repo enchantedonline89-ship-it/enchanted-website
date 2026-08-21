@@ -8,11 +8,8 @@ const POLICY_LAST_UPDATED = new Date("2026-03-01")
 const SHIPPING_LAST_UPDATED = new Date("2026-08-14")
 const HELP_LAST_UPDATED = new Date("2026-08-21")
 
-// Real signal, not a fabricated date: the mock catalog's own updated_at
-// timestamps, the same rows the homepage renders. Only static marketing
-// routes are listed below; /admin, /auth, and /orders are gated (see
-// middleware.ts) and are excluded, not just noindexed, so nothing sends a
-// crawler to a URL that only ever redirects it away.
+// Only public marketing and live catalog routes are listed. Account, admin,
+// authentication and order routes are deliberately excluded.
 const SITE_LAST_UPDATED = new Date("2026-08-21")
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

@@ -7,6 +7,9 @@ export interface CartLine {
   id: string
   size: string | null
   qty: number
+  colorId?: string
+  colorName?: string
+  variantId?: string
 }
 
 /**
@@ -19,6 +22,10 @@ export function CartProbe() {
     id: i.product.id,
     size: i.selectedSize,
     qty: i.quantity,
+    ...(i.selectedColor
+      ? { colorId: i.selectedColor.id, colorName: i.selectedColor.name }
+      : {}),
+    ...(i.selectedVariantId ? { variantId: i.selectedVariantId } : {}),
   }))
   return (
     <div
@@ -46,7 +53,16 @@ export function CartControls({ products }: { products: Product[] }) {
         <button
           key={p.id}
           type="button"
-          onClick={() => addToCart(p, p.sizes?.[0] ?? null)}
+          onClick={() => {
+            const selectedColor = p.colors?.[0] ?? null
+            const selectedVariant = p.variants?.find(
+              variant => variant.color_id === selectedColor?.id && variant.in_stock,
+            ) ?? null
+            addToCart(p, selectedVariant?.size ?? p.sizes?.[0] ?? null, {
+              selectedColor,
+              selectedVariantId: selectedVariant?.id ?? null,
+            })
+          }}
           data-testid={`seed-${p.id}`}
         >
           {`seed ${p.id}`}

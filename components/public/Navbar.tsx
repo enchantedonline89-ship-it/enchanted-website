@@ -25,8 +25,7 @@ export default function Navbar() {
   const { user, loading, signOut } = useAuth()
   const pathname = usePathname()
 
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()
-  const isAdmin = Boolean(user?.email && user.email.toLowerCase() === adminEmail)
+  const isAdmin = user?.role === 'admin'
 
   // Close the drawer when the route changes, adjusted during render rather than
   // in an effect so navigation does not cost an extra commit.
@@ -72,6 +71,12 @@ export default function Navbar() {
                   className="t-meta link-grow px-3 py-2 text-ink-dim hover:text-ink"
                 >
                   Orders
+                </Link>
+                <Link
+                  href="/account/addresses"
+                  className="t-meta link-grow px-3 py-2 text-ink-dim hover:text-ink"
+                >
+                  Account
                 </Link>
                 {isAdmin && (
                   <Link
@@ -180,6 +185,9 @@ export default function Navbar() {
                   <p className="t-meta mb-3 truncate">{user.email}</p>
                   <Link href="/orders" className="t-meta py-3 text-ink-dim">
                     Your orders
+                  </Link>
+                  <Link href="/account/addresses" className="t-meta py-3 text-ink-dim">
+                    Account & addresses
                   </Link>
                   {isAdmin && (
                     <Link href="/admin/dashboard" className="t-meta py-3 text-ink-dim">

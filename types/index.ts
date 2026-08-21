@@ -20,6 +20,32 @@ export interface Category {
 
 export type FitAdvice = 'true_to_size' | 'size_up' | 'size_down'
 
+export interface ProductColor {
+  id: string
+  product_id: string
+  name: string
+  hex_code: string
+  image_url: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductVariant {
+  id: string
+  product_id: string
+  color_id: string | null
+  sku: string | null
+  size: string | null
+  /** Null means the shop is not tracking a finite quantity for this variant. */
+  stock_quantity: number | null
+  in_stock: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Product {
   id: string
   category_id: string | null
@@ -50,6 +76,10 @@ export interface Product {
   updated_at: string
   // Joined
   category?: Category | null
+  colors?: ProductColor[]
+  variants?: ProductVariant[]
+  /** True when variant rows exist, including when every row is inactive. */
+  inventory_tracked?: boolean
 }
 
 export type SiteTheme = 'default' | 'christmas' | 'ramadan'

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { X, UploadSimple, CircleNotch, ArrowLeft, ArrowRight } from '@phosphor-icons/react/ssr'
-import { uploadProductImage } from '@/lib/upload-image'
+import { uploadCatalogImage } from '@/lib/admin-catalog-client'
 
 /**
  * Ordered image gallery for a product.
@@ -40,13 +40,19 @@ export default function GalleryUpload({
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
+    const remaining = 9 - all.length
+    if (remaining <= 0) {
+      setError('A product can have one cover and up to eight additional photos.')
+      e.target.value = ''
+      return
+    }
 
     setBusy(true)
-    setError(null)
+    setError(files.length > remaining ? 'Only the first photos that fit the nine-photo limit were uploaded.' : null)
     const added: string[] = []
     try {
-      for (const file of files) {
-        added.push(await uploadProductImage(file))
+      for (const file of files.slice(0, remaining)) {
+        added.push(await uploadCatalogImage(file))
       }
       commit([...all, ...added])
     } catch (err) {
@@ -157,7 +163,7 @@ export default function GalleryUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         multiple
         onChange={handleFiles}
         className="hidden"

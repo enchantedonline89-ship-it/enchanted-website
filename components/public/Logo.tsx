@@ -35,7 +35,9 @@ export default function Logo({
         className="h-auto w-auto"
         style={{ width, height }}
       />
-      <span className="seasonal-logo-accent" aria-hidden="true" />
+      <span className="seasonal-logo-accent" aria-hidden="true">
+        <span className="seasonal-logo-accent-detail" />
+      </span>
     </Link>
   )
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { List, SignOut } from '@phosphor-icons/react/ssr'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/auth/client'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import Logo from '@/components/public/Logo'
 
@@ -16,8 +16,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter()
 
   const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    await authClient.signOut()
     router.push('/admin/login')
     router.refresh()
   }

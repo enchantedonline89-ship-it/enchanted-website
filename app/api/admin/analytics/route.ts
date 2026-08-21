@@ -1,21 +1,20 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { authorizeAdminRequest } from '@/lib/admin-api'
+import { getCloudflareEnv } from '@/lib/cloudflare/env'
+import { getDashboardAnalytics, getExternalAnalytics } from '@/lib/admin-analytics'
 
 export async function GET(request: NextRequest) {
   const authorization = await authorizeAdminRequest(request)
   if (!authorization.ok) return authorization.error
+  const env = await getCloudflareEnv()
+  if (!env) return NextResponse.json({ error: 'Analytics unavailable.' }, { status: 503 })
 
-  const service = await createServiceClient()
-  const { data, error } = await service.from('order_analytics').select('*').single()
-  if (error) {
-    console.error('Admin analytics query error:', error)
-    return NextResponse.json({ error: 'Analytics are temporarily unavailable.' }, { status: 503 })
-  }
-
+  const [commerce, technical] = await Promise.all([
+    getDashboardAnalytics(authorization.db),
+    getExternalAnalytics(env),
+  ])
   return NextResponse.json(
-    { analytics: data },
+    { commerce, technical },
     { headers: { 'Cache-Control': 'private, no-store, max-age=0' } },
   )
 }

@@ -1,72 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getAuth } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
 
-// ─── Rate limiting: 1 deletion per 10 minutes per IP ─────────────────────────
-const WINDOW_MS = 10 * 60_000
-const MAX_TRACKED_IPS = 5_000
-const deleteHits = new Map<string, number>()
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const last = deleteHits.get(ip)
-  if (last && now - last < WINDOW_MS) return true
-  if (!last && deleteHits.size >= MAX_TRACKED_IPS) {
-    const cutoff = now - WINDOW_MS
-    for (const [key, timestamp] of deleteHits) {
-      if (timestamp < cutoff) deleteHits.delete(key)
-    }
-    if (deleteHits.size >= MAX_TRACKED_IPS) return true
-  }
-  deleteHits.set(ip, now)
-  return false
+async function shortHash(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return [...new Uint8Array(digest)].slice(0, 8).map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export async function DELETE(request: NextRequest) {
   const origin = request.headers.get('origin')
-  if (origin && origin !== request.nextUrl.origin) {
+  if (!origin || origin !== request.nextUrl.origin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-
-  // Rate limit
-  const cloudflareIp = request.headers.get('cf-connecting-ip')
-  const realIp = request.headers.get('x-real-ip')
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = cloudflareIp ?? realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
+  let confirmation = ''
+  try {
+    const body = await request.json() as { confirm?: unknown }
+    confirmation = typeof body.confirm === 'string' ? body.confirm : ''
+  } catch {
+    return NextResponse.json({ error: 'Confirmation is required.' }, { status: 400 })
+  }
+  if (confirmation !== 'DELETE') {
+    return NextResponse.json({ error: 'Type DELETE to confirm.' }, { status: 400 })
   }
 
-  // getUser() revalidates the JWT against the auth server. getSession() must NOT be
-  // used here: on the server it reads the user straight out of the auth cookie, which
-  // @supabase/ssr stores as unsigned base64url JSON, so a forged cookie would let any
-  // caller delete an arbitrary account.
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const [auth, db] = await Promise.all([getAuth(), getD1Database()])
+    if (!db) throw new Error('database-unavailable')
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (session.user.role === 'admin') {
+      return NextResponse.json({ error: 'The owner account cannot be deleted here.' }, { status: 403 })
+    }
+
+    const open = await db.prepare(
+      `SELECT count(*) AS count FROM orders
+       WHERE user_id = ? AND status IN ('pending','confirmed','preparing','out_for_delivery')`,
+    ).bind(session.user.id).first<{ count: number }>()
+    if ((open?.count ?? 0) > 0) {
+      return NextResponse.json(
+        { error: 'Your account has an open order. Delete it after the order is delivered or cancelled.' },
+        { status: 409 },
+      )
+    }
+
+    const now = new Date().toISOString()
+    const anonymousEmail = `deleted+${await shortHash(`${session.user.id}:${session.user.email}`)}@privacy.invalid`
+    await db.batch([
+      db.prepare(
+        `UPDATE orders SET
+           user_id = NULL, user_email = ?, recipient_name = 'Deleted customer',
+           phone_e164 = '+9610000000', governorate = 'Deleted', city = 'Deleted',
+           area = 'Deleted', street = 'Deleted', building = NULL, floor = NULL,
+           landmark = NULL, delivery_notes = NULL, order_notes = NULL, updated_at = ?
+         WHERE user_id = ?`,
+      ).bind(anonymousEmail, now, session.user.id),
+      db.prepare('DELETE FROM "user" WHERE id = ? AND role = \'customer\'').bind(session.user.id),
+    ])
+    return NextResponse.json({ deleted: true })
+  } catch (error) {
+    console.error('Account deletion failed', error)
+    return NextResponse.json({ error: 'We could not delete the account. Contact support.' }, { status: 503 })
   }
-
-  // Prevent admin from accidentally deleting their own account via this route
-  if (user.email?.toLowerCase() === (process.env.ADMIN_EMAIL ?? '').toLowerCase()) {
-    return NextResponse.json({ error: 'Admin account cannot be deleted via this endpoint.' }, { status: 403 })
-  }
-
-  const service = await createServiceClient()
-
-  // Delete user's orders
-  const { error: orderDeleteError } = await service.from('orders').delete().eq('user_id', user.id)
-  if (orderDeleteError) {
-    return NextResponse.json(
-      { error: 'Failed to remove your order data. Your account was not deleted.' },
-      { status: 500 },
-    )
-  }
-
-  // Delete the user account
-  const { error: deleteError } = await service.auth.admin.deleteUser(user.id)
-  if (deleteError) {
-    return NextResponse.json({ error: 'Failed to delete account. Please contact support.' }, { status: 500 })
-  }
-
-  return NextResponse.json({ deleted: true })
 }

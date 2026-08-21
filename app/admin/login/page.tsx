@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/auth/client'
 import Logo from '@/components/public/Logo'
 import Link from 'next/link'
 
@@ -18,8 +18,7 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = await authClient.signIn.email({ email, password })
 
     if (authError) {
       setError('That email and password do not match an account.')
@@ -94,12 +93,9 @@ export default function AdminLoginPage() {
           </form>
 
           <div className="mt-6 border-t border-line pt-6">
-            <Link href="/admin/demo" className="btn btn-ghost w-full">
-              Open read-only client demo
+            <Link href="/" className="btn btn-ghost w-full">
+              Return to shop
             </Link>
-            <p className="t-meta mt-2 text-center normal-case tracking-normal">
-              Mock data only. No live customer information or editing access.
-            </p>
           </div>
         </div>
       </div>

@@ -1,127 +1,98 @@
 'use client'
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
-import { isSupabaseMockMode } from '@/lib/mock-data'
 
-const MOCK_USER: User = {
-  id: 'mock-user-id',
-  email: 'test@enchanted.style',
-  user_metadata: { full_name: 'Test User', avatar_url: null },
-  app_metadata: {},
-  aud: 'authenticated',
-  created_at: new Date().toISOString(),
-} as User
+import { createContext, useContext, type ReactNode } from 'react'
+import { authClient } from '@/lib/auth/client'
 
-interface AuthContextType {
-  user: User | null
+export type AuthUser = {
+  id: string
+  name: string
+  email: string
+  emailVerified: boolean
+  image?: string | null
+  role?: string
+}
+
+type AuthContextType = {
+  user: AuthUser | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<string | null>
   signUpWithEmail: (email: string, password: string) => Promise<string | null>
   resetPassword: (email: string) => Promise<string | null>
   signOut: () => Promise<void>
-  mockSignIn: () => void  // only used in mock mode
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+function publicMessage(error: { message?: string; code?: string } | null): string | null {
+  if (!error) return null
+  if (error.code === 'EMAIL_NOT_VERIFIED') {
+    return 'Verify your email before signing in. We sent you a fresh link.'
+  }
+  return error.message || 'That request could not be completed. Please try again.'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (isSupabaseMockMode()) {
-      setLoading(false)
-      return
-    }
-
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
-      setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
-
-      // Tie analytics to a stable id so a returning customer is one person
-      // rather than a new anonymous visitor each time. The email is sent as a
-      // property, not as the distinct id, so it never becomes the primary key.
-      if (event === 'SIGNED_IN' && session?.user) {
-        void import('posthog-js').then(({ default: posthog }) => {
-          if (posthog.__loaded) posthog.identify(session.user.id, { email: session.user.email })
-        })
-      }
-      if (event === 'SIGNED_OUT') {
-        void import('posthog-js').then(({ default: posthog }) => {
-          if (posthog.__loaded) posthog.reset()
-        })
-      }
-
-      if (event === 'SIGNED_IN') {
-        const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()
-        const isAdmin = adminEmail !== undefined &&
-          session?.user?.email?.toLowerCase() === adminEmail
-        const isAdminPath = typeof window !== 'undefined' &&
-          window.location.pathname.startsWith('/admin')
-        if (!isAdmin && !isAdminPath) {
-          window.dispatchEvent(new CustomEvent('enchanted:welcome'))
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  const { data: session, isPending } = authClient.useSession()
+  const user = (session?.user as AuthUser | undefined) ?? null
 
   const signInWithGoogle = async () => {
-    const supabase = createClient()
-    // The cart drawer records its own resume marker when it reaches the auth
-    // wall, because only it knows the chosen delivery area.
-    await supabase.auth.signInWithOAuth({
+    const { error } = await authClient.signIn.social({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      callbackURL: window.location.href,
+      errorCallbackURL: `${window.location.origin}/?auth=1`,
     })
+    if (error) throw new Error(publicMessage(error) ?? 'Google sign in failed')
   }
 
-  const signInWithEmail = async (email: string, password: string): Promise<string | null> => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return error ? 'Invalid email or password.' : null
+  const signInWithEmail = async (email: string, password: string) => {
+    const { error } = await authClient.signIn.email({ email, password })
+    return publicMessage(error)
   }
 
-  const signUpWithEmail = async (email: string, password: string): Promise<string | null> => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
-    return error ? error.message : null
+  const signUpWithEmail = async (email: string, password: string) => {
+    const fallbackName = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim() || 'Customer'
+    const { error } = await authClient.signUp.email({
+      email,
+      password,
+      name: fallbackName,
+      callbackURL: window.location.href,
+    })
+    return publicMessage(error)
   }
 
-  const resetPassword = async (email: string): Promise<string | null> => {
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const resetPassword = async (email: string) => {
+    const { error } = await authClient.requestPasswordReset({
+      email,
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
-    return error ? error.message : null
+    return publicMessage(error)
   }
 
   const signOut = async () => {
-    if (isSupabaseMockMode()) { setUser(null); return }
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    setUser(null)
+    await authClient.signOut()
+    window.dispatchEvent(new CustomEvent('enchanted:signed-out'))
   }
 
-  const mockSignIn = () => setUser(MOCK_USER)
-
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut, mockSignIn }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading: isPending,
+        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
+        resetPassword,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used inside AuthProvider')
+  return context
 }

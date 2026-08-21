@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, MoonStars, Snowflake, Sparkle } from '@phosphor-icons/react/ssr'
-import { createClient } from '@/lib/supabase/client'
 import type { SiteTheme } from '@/types'
 
 const THEMES: Array<{
@@ -51,51 +50,24 @@ export default function ThemeSettingsForm({ initialTheme }: { initialTheme: Site
     setMessage(null)
 
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('SESSION_EXPIRED')
-
-      const before = { active_theme: savedTheme }
-      const { data, error: settingsError } = await supabase
-        .from('site_settings')
-        .upsert({
-          id: 'storefront',
-          active_theme: theme,
-        }, { onConflict: 'id' })
-        .select()
-        .single()
-
-      if (settingsError) throw settingsError
-
-      const { error: logError } = await supabase.from('admin_logs').insert({
-        admin_email: user.email ?? 'unknown',
-        action: 'UPDATE',
-        entity_type: 'site_setting',
-        entity_id: null,
-        entity_name: 'Storefront theme',
-        changes: { before, after: data },
+      const response = await fetch('/api/admin/settings/theme', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme }),
       })
-      if (logError) throw new Error('AUDIT_LOG_FAILED')
-
-      const response = await fetch('/api/revalidate', { method: 'POST' })
-      if (!response.ok) throw new Error('REVALIDATION_FAILED')
+      const value: unknown = await response.json().catch(() => ({}))
+      const result = value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {}
+      if (!response.ok) {
+        throw new Error(typeof result.error === 'string' ? result.error : 'Could not apply that theme.')
+      }
 
       setSavedTheme(theme)
       setMessage(`${THEMES.find(item => item.id === theme)?.name ?? 'Theme'} is now live.`)
       router.refresh()
     } catch (caught) {
-      const detail = caught instanceof Error ? caught.message : 'unknown'
-      if (detail === 'SESSION_EXPIRED') {
-        setError('Your session has expired. Please sign in again.')
-      } else if (detail === 'AUDIT_LOG_FAILED') {
-        setError('The theme changed, but the audit entry failed. Please contact support.')
-      } else if (detail === 'REVALIDATION_FAILED') {
-        setError('The theme changed, but the storefront refresh failed. Refresh the shop manually.')
-      } else if (detail.includes('site_settings') || detail.includes('schema cache')) {
-        setError('Theme storage is not ready yet. Apply the site settings database migration, then try again.')
-      } else {
-        setError(`Could not save the theme: ${detail}`)
-      }
+      setError(caught instanceof Error ? caught.message : 'Could not apply that theme.')
     } finally {
       setSaving(false)
     }

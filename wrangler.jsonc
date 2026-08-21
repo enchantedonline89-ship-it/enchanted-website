@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "enchanted-style",
-  "main": ".open-next/worker.js",
+  "main": "cloudflare-worker.ts",
   "workers_dev": true,
   "preview_urls": true,
   "compatibility_date": "2026-08-21",
@@ -22,11 +22,38 @@
   "images": {
     "binding": "IMAGES"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "enchanted-production",
+      "database_id": "0432bbf5-9c87-4f71-b7cd-cb03ebe21bdb"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "enchanted-product-media"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EMAIL_QUEUE",
+        "queue": "enchanted-email"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "enchanted-email",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "enchanted-email-dlq"
+      }
+    ]
+  },
   "vars": {
-    "ENABLE_MOCK_CATALOG": "true",
-    "ADMIN_EMAIL": "Enchantedonline89@gmail.com",
-    "NEXT_PUBLIC_ADMIN_EMAIL": "Enchantedonline89@gmail.com",
-    "NEXT_PUBLIC_SITE_URL": "https://enchanted-style.elietanios209.workers.dev"
+    "ADMIN_EMAIL": "Enchantedonline89@gmail.com"
   },
   "observability": {
     "enabled": true

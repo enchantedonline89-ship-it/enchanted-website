@@ -8,6 +8,8 @@ import SizeGuideSheet from "./SizeGuideSheet"
 import { buildProductEnquiryURL } from "@/lib/whatsapp"
 import { productHref } from "@/lib/product-url"
 import type { Product, SizeSystem } from "@/types"
+import ProductColorPicker from "./ProductColorPicker"
+import { productOptionState } from "./product-options"
 
 const FIT_COPY: Record<string, string> = {
   size_up: "This style runs small. We recommend taking one size up.",
@@ -23,28 +25,40 @@ export default function ProductBuyBox({
   sizeSystem: SizeSystem
 }) {
   const { addToCart, openCart } = useCart()
-  const hasSizes = Boolean(product.sizes?.length)
 
   // Never preselected. A preselected size is a wrong-size-order generator, and
   // a wrong size here costs the owner the item and both delivery legs.
+  const [colorId, setColorId] = useState<string | null>(null)
   const [size, setSize] = useState<string | null>(null)
+  const [needsColor, setNeedsColor] = useState(false)
   const [needsSize, setNeedsSize] = useState(false)
   const [added, setAdded] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
 
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
+  const options = productOptionState(product, colorId, size)
 
   // Sizes are expected but none are set: a data hole, not an empty state.
   // Route to a human rather than rendering an empty size row.
-  const sizesMissing = !hasSizes && sizeSystem !== "none"
+  const sizesMissing = !options.inventoryManaged && !options.requiresSize && sizeSystem !== "none"
 
   function handleAdd() {
-    if (hasSizes && !size) {
+    if (options.requiresColor) {
+      setNeedsColor(true)
+      return
+    }
+    if (options.requiresSize && !size) {
       setNeedsSize(true)
       return
     }
-    addToCart(product, hasSizes ? size : null)
+    if (!options.canAdd) return
+
+    addToCart(product, options.requiresSize ? size : null, {
+      selectedColor: options.selectedColor,
+      selectedVariantId: options.selectedVariant?.id ?? null,
+    })
+    setNeedsColor(false)
     setNeedsSize(false)
     setAdded(true)
     window.clearTimeout(timer.current)
@@ -55,7 +69,27 @@ export default function ProductBuyBox({
 
   return (
     <div className="mt-8">
-      {hasSizes && (
+      {options.hasColors && (
+        <div className="mb-6">
+          <ProductColorPicker
+            product={product}
+            selectedColorId={colorId}
+            onSelect={(color) => {
+              setColorId(color.id)
+              setSize(null)
+              setNeedsColor(false)
+              setNeedsSize(false)
+            }}
+          />
+          {needsColor && (
+            <p role="alert" className="mt-2 text-[0.8125rem] text-signal-error">
+              Pick a color first.
+            </p>
+          )}
+        </div>
+      )}
+
+      {options.requiresSize && (
         <>
           <div className="flex items-baseline justify-between gap-4">
             <span className="t-meta">Size</span>
@@ -75,24 +109,28 @@ export default function ProductBuyBox({
             role="group"
             aria-label="Choose a size"
           >
-            {product.sizes!.map((s) => {
-              const active = size === s
+            {options.sizes.map((sizeOption) => {
+              const active = size === sizeOption.label
               return (
                 <button
-                  key={s}
+                  key={sizeOption.label}
                   type="button"
                   onClick={() => {
-                    setSize(s)
+                    setSize(sizeOption.label)
                     setNeedsSize(false)
                   }}
+                  disabled={!sizeOption.inStock}
                   aria-pressed={active}
+                  aria-label={sizeOption.inStock
+                    ? sizeOption.label
+                    : `${sizeOption.label}, out of stock`}
                   className={`tnum flex min-h-11 min-w-11 items-center justify-center border px-3 text-[0.8125rem] transition-colors ${
                     active
                       ? "border-ink bg-ink text-paper"
-                      : "border-line-strong text-ink-dim hover:border-ink hover:text-ink"
+                      : "border-line-strong text-ink-dim hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-35"
                   }`}
                 >
-                  {s}
+                  {sizeOption.label}
                 </button>
               )
             })}
@@ -122,14 +160,19 @@ export default function ProductBuyBox({
           Ask about sizes
         </a>
       ) : (
-        <button type="button" onClick={handleAdd} className="btn btn-gold mt-6 w-full">
-          Add to cart
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={options.isOutOfStock}
+          className="btn btn-gold mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {options.isOutOfStock ? "Out of stock" : "Add to cart"}
         </button>
       )}
 
       {/* Announced once, not by relabelling the button. */}
       <span className="sr-only" role="status">
-        {added ? `Added ${product.name}${size ? `, size ${size}` : ""} to your cart.` : ""}
+        {added ? `Added ${product.name}${options.selectedColor ? `, color ${options.selectedColor.name}` : ""}${size ? `, size ${size}` : ""} to your cart.` : ""}
       </span>
 
       {added && (

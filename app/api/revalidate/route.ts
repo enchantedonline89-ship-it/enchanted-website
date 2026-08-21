@@ -5,7 +5,7 @@ import { authorizeAdminRequest } from "@/lib/admin-api"
 /**
  * POST /api/revalidate
  * Called by admin panel after any product/category mutation.
- * Requires an authenticated Supabase session (cookie-based) from the admin account.
+ * Requires a server-verified Better Auth admin session.
  * Triggers ISR revalidation for the public catalog page.
  */
 export async function POST(request: NextRequest) {

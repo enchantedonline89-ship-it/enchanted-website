@@ -57,6 +57,17 @@ function readableDate(value: string | null): string {
   }).format(new Date(value))
 }
 
+async function readApiResult(response: Response): Promise<Record<string, unknown>> {
+  const value: unknown = await response.json().catch(() => ({}))
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function apiError(result: Record<string, unknown>, fallback: string): string {
+  return typeof result.error === 'string' ? result.error : fallback
+}
+
 export default function PromotionManager({
   initialPromotions,
   categories,
@@ -71,7 +82,6 @@ export default function PromotionManager({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [warning, setWarning] = useState<string | null>(null)
 
   const sorted = useMemo(
     () => [...initialPromotions].sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at)),
@@ -96,7 +106,6 @@ export default function PromotionManager({
       is_active: promotion.is_active,
     })
     setError(null)
-    setWarning(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -110,18 +119,16 @@ export default function PromotionManager({
     event.preventDefault()
     setSaving(true)
     setError(null)
-    setWarning(null)
-
-    const payload = {
-      ...form,
-      scope: form.campaign_type === 'event' ? 'sitewide' : form.scope,
-      category_id: form.campaign_type === 'discount' && form.scope === 'category' ? form.category_id : null,
-      discount_percent: form.campaign_type === 'discount' ? Number(form.discount_percent) : null,
-      starts_at: new Date(form.starts_at).toISOString(),
-      ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
-    }
 
     try {
+      const payload = {
+        ...form,
+        scope: form.campaign_type === 'event' ? 'sitewide' : form.scope,
+        category_id: form.campaign_type === 'discount' && form.scope === 'category' ? form.category_id : null,
+        discount_percent: form.campaign_type === 'discount' ? Number(form.discount_percent) : null,
+        starts_at: new Date(form.starts_at).toISOString(),
+        ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+      }
       const response = await fetch(
         editingId ? `/api/admin/promotions/${editingId}` : '/api/admin/promotions',
         {
@@ -130,10 +137,9 @@ export default function PromotionManager({
           body: JSON.stringify(payload),
         },
       )
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Could not save that event.')
+      const result = await readApiResult(response)
+      if (!response.ok) throw new Error(apiError(result, 'Could not save that event.'))
       reset()
-      setWarning(typeof result.warning === 'string' ? result.warning : null)
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save that event.')
@@ -146,13 +152,11 @@ export default function PromotionManager({
     if (!window.confirm(`Delete “${promotion.name}”? This cannot be undone.`)) return
     setDeletingId(promotion.id)
     setError(null)
-    setWarning(null)
     try {
       const response = await fetch(`/api/admin/promotions/${promotion.id}`, { method: 'DELETE' })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Could not delete that event.')
+      const result = await readApiResult(response)
+      if (!response.ok) throw new Error(apiError(result, 'Could not delete that event.'))
       if (editingId === promotion.id) reset()
-      setWarning(typeof result.warning === 'string' ? result.warning : null)
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete that event.')
@@ -164,7 +168,6 @@ export default function PromotionManager({
   async function toggle(promotion: Promotion) {
     setTogglingId(promotion.id)
     setError(null)
-    setWarning(null)
     try {
       const response = await fetch(`/api/admin/promotions/${promotion.id}`, {
         method: 'PATCH',
@@ -181,9 +184,8 @@ export default function PromotionManager({
           is_active: !promotion.is_active,
         }),
       })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Could not change that event.')
-      setWarning(typeof result.warning === 'string' ? result.warning : null)
+      const result = await readApiResult(response)
+      if (!response.ok) throw new Error(apiError(result, 'Could not change that event.'))
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not change that event.')
@@ -206,7 +208,6 @@ export default function PromotionManager({
         </div>
 
         {error && <p role="alert" className="mb-5 border border-signal-error/30 bg-signal-error/10 px-3 py-2 text-sm text-signal-error">{error}</p>}
-        {warning && <p role="status" className="mb-5 border border-signal-warn/30 bg-signal-warn/10 px-3 py-2 text-sm text-signal-warn">{warning}</p>}
 
         <div className="space-y-5">
           <div>

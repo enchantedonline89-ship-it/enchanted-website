@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Archivo, Cormorant_Garamond } from "next/font/google"
 import PostHogPageview from "@/components/analytics/PostHogPageview"
+import ConsentBanner from "@/components/analytics/ConsentBanner"
 import "./globals.css"
 import "./three.css"
 import { CartProvider } from "@/lib/cart-context"
@@ -105,6 +106,7 @@ export default async function RootLayout({
             <SiteThemeShell theme={siteTheme}>
               <WelcomeModal />
               {children}
+              <ConsentBanner />
             </SiteThemeShell>
           </CartProvider>
         </AuthProvider>

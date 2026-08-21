@@ -42,9 +42,13 @@ export default function DeleteAccountModal({
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch("/api/account/delete", { method: "DELETE" })
+      const res = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: typed }),
+      })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: string }
         setError(data.error ?? "We could not delete the account. Please contact us.")
         setBusy(false)
         return

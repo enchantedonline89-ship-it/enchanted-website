@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react'
 
 type TrackedOrder = {
   order_number: string
-  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled'
   created_at: string
   updated_at: string
 }
@@ -16,7 +16,15 @@ const STATUS = {
   },
   confirmed: {
     label: 'Confirmed',
-    detail: 'Your order is confirmed and being prepared for delivery.',
+    detail: 'Your order is confirmed. We will email you as it moves forward.',
+  },
+  preparing: {
+    label: 'Being prepared',
+    detail: 'We are preparing your items for delivery.',
+  },
+  out_for_delivery: {
+    label: 'Out for delivery',
+    detail: 'Your order is with the delivery driver.',
   },
   delivered: {
     label: 'Delivered',
@@ -115,12 +123,6 @@ export default function TrackOrderForm() {
           </section>
         )}
       </div>
-
-      {process.env.NODE_ENV === 'development' && (
-        <p className="text-xs text-ink-faint">
-          Demo: ES-2608-001001 and demo@enchanted.style
-        </p>
-      )}
     </div>
   )
 }

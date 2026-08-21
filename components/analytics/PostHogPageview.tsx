@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
+import { ANALYTICS_CONSENT_KEY } from "@/components/analytics/ConsentBanner"
 
 /**
  * The App Router does not reload the document on client navigation, so PostHog's
@@ -17,6 +18,11 @@ export default function PostHogPageview() {
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return
+    try {
+      if (window.localStorage.getItem(ANALYTICS_CONSENT_KEY) !== 'granted') return
+    } catch {
+      return
+    }
 
     let url = window.origin + pathname
     const qs = searchParams.toString()

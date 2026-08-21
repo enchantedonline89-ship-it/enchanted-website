@@ -14,7 +14,7 @@ import {
   X,
   ArrowSquareOut,
 } from '@phosphor-icons/react/ssr'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/auth/client'
 import { cn } from '@/lib/utils'
 import { useOverlay } from '@/lib/use-overlay'
 import Logo from '@/components/public/Logo'
@@ -40,8 +40,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
   const sidebarRef = useOverlay<HTMLElement>(isOpen, () => onClose?.())
 
   const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    await authClient.signOut()
     router.push('/admin/login')
     router.refresh()
   }

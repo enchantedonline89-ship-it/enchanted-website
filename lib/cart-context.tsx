@@ -1,24 +1,55 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
-import type { Product } from '@/types'
+import type { Product, ProductColor } from '@/types'
+
+export type SelectedProductColor = Pick<
+  ProductColor,
+  'id' | 'name' | 'hex_code' | 'image_url'
+>
+
+export interface CartSelection {
+  selectedColor?: SelectedProductColor | null
+  selectedVariantId?: string | null
+}
 
 export interface CartItem {
   product: Product
   selectedSize: string | null
+  /** Optional so carts saved before color support remain readable. */
+  selectedColor?: SelectedProductColor | null
+  selectedVariantId?: string | null
   quantity: number
 }
 
 // Stable key for a cart line item
-export function cartItemKey(productId: string, selectedSize: string | null): string {
-  return `${productId}::${selectedSize ?? 'no-size'}`
+export function cartItemKey(
+  productId: string,
+  selectedSize: string | null,
+  selectedColorId: string | null = null,
+): string {
+  const base = `${productId}::${selectedSize ?? 'no-size'}`
+  return selectedColorId ? `${base}::color:${selectedColorId}` : base
 }
 
 interface CartContextType {
   items: CartItem[]
-  addToCart: (product: Product, selectedSize: string | null) => void
-  removeFromCart: (productId: string, selectedSize: string | null) => void
-  updateQuantity: (productId: string, selectedSize: string | null, quantity: number) => void
+  addToCart: (
+    product: Product,
+    selectedSize: string | null,
+    selection?: CartSelection,
+  ) => void
+  removeFromCart: (
+    productId: string,
+    selectedSize: string | null,
+    selectedColorId?: string | null,
+  ) => void
+  updateQuantity: (
+    productId: string,
+    selectedSize: string | null,
+    quantity: number,
+    selectedColorId?: string | null,
+  ) => void
   clearCart: () => void
   totalItems: number
   isOpen: boolean
@@ -38,6 +69,30 @@ function loadFromStorage(): CartItem[] {
   } catch {
     return []
   }
+}
+
+function selectionIsAvailable(
+  product: Product,
+  selectedSize: string | null,
+  selection: CartSelection,
+): boolean {
+  const colors = product.colors ?? []
+  const variants = product.variants ?? []
+  const inventoryManaged = Boolean(
+    product.inventory_tracked || colors.length > 0 || variants.length > 0,
+  )
+  if (!inventoryManaged) return true
+
+  const selectedColor = selection.selectedColor ?? null
+  if (colors.length > 0 && !selectedColor) return false
+
+  const variant = variants.find(
+    candidate => candidate.id === selection.selectedVariantId,
+  )
+  if (!variant || !variant.is_active || !variant.in_stock) return false
+  if (variant.stock_quantity !== null && variant.stock_quantity <= 0) return false
+  if (variant.color_id !== (selectedColor?.id ?? null)) return false
+  return variant.size === selectedSize
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -75,47 +130,72 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setHydrated(true)
   }, [])
 
-  const addToCart = useCallback((product: Product, selectedSize: string | null) => {
+  const addToCart = useCallback((
+    product: Product,
+    selectedSize: string | null,
+    selection: CartSelection = {},
+  ) => {
+    if (!selectionIsAvailable(product, selectedSize, selection)) return
     beginCartChange()
     setItems(prev => {
-      const key = cartItemKey(product.id, selectedSize)
+      const selectedColor = selection.selectedColor ?? null
+      const selectedVariantId = selection.selectedVariantId ?? null
+      const key = cartItemKey(product.id, selectedSize, selectedColor?.id)
       const existing = prev.find(
-        item => cartItemKey(item.product.id, item.selectedSize) === key
+        item => cartItemKey(
+          item.product.id,
+          item.selectedSize,
+          item.selectedColor?.id,
+        ) === key
       )
       if (existing) {
         return prev.map(item =>
-          cartItemKey(item.product.id, item.selectedSize) === key
-            ? { ...item, quantity: item.quantity + 1 }
+          cartItemKey(item.product.id, item.selectedSize, item.selectedColor?.id) === key
+            ? {
+                ...item,
+                product,
+                selectedColor,
+                selectedVariantId,
+                quantity: item.quantity + 1,
+              }
             : item
         )
       }
-      return [...prev, { product, selectedSize, quantity: 1 }]
+      return [
+        ...prev,
+        { product, selectedSize, selectedColor, selectedVariantId, quantity: 1 },
+      ]
     })
   }, [beginCartChange])
 
-  const removeFromCart = useCallback((productId: string, selectedSize: string | null) => {
+  const removeFromCart = useCallback((
+    productId: string,
+    selectedSize: string | null,
+    selectedColorId: string | null = null,
+  ) => {
     beginCartChange()
-    const key = cartItemKey(productId, selectedSize)
+    const key = cartItemKey(productId, selectedSize, selectedColorId)
     setItems(prev => prev.filter(
-      item => cartItemKey(item.product.id, item.selectedSize) !== key
+      item => cartItemKey(item.product.id, item.selectedSize, item.selectedColor?.id) !== key
     ))
   }, [beginCartChange])
 
   const updateQuantity = useCallback((
     productId: string,
     selectedSize: string | null,
-    quantity: number
+    quantity: number,
+    selectedColorId: string | null = null,
   ) => {
     beginCartChange()
-    const key = cartItemKey(productId, selectedSize)
+    const key = cartItemKey(productId, selectedSize, selectedColorId)
     if (quantity <= 0) {
       setItems(prev => prev.filter(
-        item => cartItemKey(item.product.id, item.selectedSize) !== key
+        item => cartItemKey(item.product.id, item.selectedSize, item.selectedColor?.id) !== key
       ))
     } else {
       setItems(prev =>
         prev.map(item =>
-          cartItemKey(item.product.id, item.selectedSize) === key
+          cartItemKey(item.product.id, item.selectedSize, item.selectedColor?.id) === key
             ? { ...item, quantity }
             : item
         )

@@ -1,19 +1,22 @@
-import { createClient } from '@/lib/supabase/server'
-import { Category } from '@/types'
+import { requireAdmin } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
+import { listAdminCategories } from '@/lib/admin-catalog'
 import DeleteCategoryButton from './DeleteCategoryButton'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CategoriesPage() {
-  const supabase = await createClient()
-  const { data: categories } = await supabase.from('categories').select('*').order('sort_order')
+  await requireAdmin()
+  const db = await getD1Database()
+  if (!db) throw new Error('Catalog database is unavailable.')
+  const categories = await listAdminCategories(db)
 
   return (
     <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl text-ink">Categories</h1>
-          <p className="text-ink-dim text-sm mt-1">{categories?.length ?? 0} categories</p>
+          <p className="text-ink-dim text-sm mt-1">{categories.length} categories</p>
         </div>
         <a href="/admin/categories/new" className="btn btn-primary">
           + Add Category
@@ -21,7 +24,7 @@ export default async function CategoriesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(categories ?? []).map((c: Category) => (
+        {categories.map(c => (
           <div key={c.id} className="bg-paper-raised border border-line overflow-hidden">
             {c.image_url && (
               // Admin accepts owner-supplied HTTPS hosts that cannot be safely
@@ -42,12 +45,12 @@ export default async function CategoriesPage() {
                 <a href={`/admin/categories/${c.id}/edit`} className="text-xs text-ink-dim hover:text-ink px-3 py-1.5 border border-line hover:border-ink/30 transition-colors">
                   Edit
                 </a>
-                <DeleteCategoryButton id={c.id} name={c.name} />
+                {c.is_active && <DeleteCategoryButton id={c.id} name={c.name} />}
               </div>
             </div>
           </div>
         ))}
-        {(!categories || categories.length === 0) && (
+        {categories.length === 0 && (
           <p className="col-span-full text-center text-ink-dim py-16">No categories yet. <a href="/admin/categories/new" className="text-ink hover:underline">Add your first</a></p>
         )}
       </div>

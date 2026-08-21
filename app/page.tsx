@@ -28,16 +28,6 @@ export default async function HomePage() {
       <Navbar />
 
       <main id="main" className="pt-[68px]">
-        {source === "mock" && (
-          <aside
-            className="border-b border-signal-warn/30 bg-signal-warn/10 px-5 py-2.5 text-center text-[0.8125rem] text-ink"
-            aria-label="Preview catalog notice"
-          >
-            <strong className="font-medium">Client preview</strong>
-            <span aria-hidden="true"> — </span>
-            Sample products and prices are shown for review only.
-          </aside>
-        )}
         <PromotionBanner promotions={promotions} />
         <Hero visual={<HeroCanvas />} />
         <DeliveryBand />

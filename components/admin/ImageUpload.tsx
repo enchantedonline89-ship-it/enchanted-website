@@ -1,18 +1,21 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useId, useState, useRef } from 'react'
 import { X, UploadSimple, CircleNotch } from '@phosphor-icons/react/ssr'
-import { uploadProductImage } from '@/lib/upload-image'
+import { uploadCatalogImage } from '@/lib/admin-catalog-client'
 
 interface Props {
   value: string
   onChange: (url: string) => void
   label?: string
+  inputId?: string
 }
 
-export default function ImageUpload({ value, onChange, label = 'Product Image' }: Props) {
+export default function ImageUpload({ value, onChange, label = 'Product Image', inputId }: Props) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const generatedId = useId()
+  const urlInputId = inputId ?? `image-url-${generatedId.replace(/:/g, '')}`
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -22,7 +25,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
     setError(null)
 
     try {
-      onChange(await uploadProductImage(file))
+      onChange(await uploadCatalogImage(file))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -32,7 +35,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
 
   return (
     <div className="space-y-2">
-      <label htmlFor="image-url" className="t-meta block">{label}</label>
+      <label htmlFor={urlInputId} className="t-meta block">{label}</label>
 
       {/* Preview */}
       {value && (
@@ -54,7 +57,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
 
       {/* URL input */}
       <input
-        id="image-url"
+        id={urlInputId}
         type="url"
         value={value}
         onChange={e => {

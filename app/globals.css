@@ -491,31 +491,47 @@ a {
 .site-theme-root {
   min-height: 100dvh;
   background: var(--color-paper);
+  isolation: isolate;
 }
 
 .site-theme-root[data-site-theme="christmas"] {
-  --color-paper: #fffaf5;
-  --color-paper-raised: #fffdf9;
-  --color-paper-sunken: #f7efe7;
-  --color-ink: #19231c;
-  --color-ink-dim: #505c52;
-  --color-ink-faint: #687069;
-  --color-line: rgba(35, 76, 53, 0.16);
-  --color-line-strong: rgba(35, 76, 53, 0.5);
+  --color-paper: rgba(255, 250, 246, 0.965);
+  --color-paper-raised: rgba(255, 253, 249, 0.975);
+  --color-paper-sunken: rgba(244, 235, 226, 0.96);
+  --color-ink: #17261d;
+  --color-ink-dim: #48564c;
+  --color-ink-faint: #626d65;
+  --color-gold: #e9b958;
+  --color-gold-hi: #f5d78f;
+  --color-gold-deep: #74501a;
+  --color-line: rgba(28, 70, 45, 0.18);
+  --color-line-strong: rgba(28, 70, 45, 0.52);
+  background-color: #fbf3ea;
+  background-image:
+    radial-gradient(circle at 0 18%, rgba(28, 70, 45, 0.12), transparent 30rem),
+    radial-gradient(circle at 100% 72%, rgba(150, 34, 49, 0.1), transparent 32rem),
+    linear-gradient(145deg, #fffaf6 0%, #f8f1e8 54%, #fffaf6 100%);
+  background-attachment: fixed;
 }
 
 .site-theme-root[data-site-theme="ramadan"] {
-  --color-paper: #fffaf0;
-  --color-paper-raised: #fffdf7;
-  --color-paper-sunken: #f4ecdc;
-  --color-ink: #182642;
-  --color-ink-dim: #4f596d;
-  --color-ink-faint: #687083;
+  --color-paper: rgba(255, 250, 240, 0.96);
+  --color-paper-raised: rgba(255, 253, 247, 0.975);
+  --color-paper-sunken: rgba(240, 232, 215, 0.965);
+  --color-ink: #142544;
+  --color-ink-dim: #46546d;
+  --color-ink-faint: #626e82;
   --color-gold: #d7a64b;
   --color-gold-hi: #edc979;
   --color-gold-deep: #75500f;
-  --color-line: rgba(24, 38, 66, 0.15);
-  --color-line-strong: rgba(24, 38, 66, 0.5);
+  --color-line: rgba(20, 37, 68, 0.17);
+  --color-line-strong: rgba(20, 37, 68, 0.52);
+  background-color: #f8f0de;
+  background-image:
+    radial-gradient(circle at 100% 12%, rgba(27, 47, 85, 0.15), transparent 31rem),
+    radial-gradient(circle at 0 78%, rgba(215, 166, 75, 0.13), transparent 34rem),
+    linear-gradient(150deg, #fffaf0 0%, #f5ecd9 55%, #fffaf1 100%);
+  background-attachment: fixed;
 }
 
 .site-theme-root[data-site-theme="christmas"]::before,
@@ -529,11 +545,65 @@ a {
 }
 
 .site-theme-root[data-site-theme="christmas"]::before {
-  background: linear-gradient(90deg, #8b2430 0 33%, #f0c068 33% 66%, #234c35 66%);
+  background: linear-gradient(90deg, #8d2635 0 34%, #e9b958 34% 66%, #1c462d 66%);
+  box-shadow: 0 1px 10px rgba(28, 70, 45, 0.16);
 }
 
 .site-theme-root[data-site-theme="ramadan"]::before {
-  background: linear-gradient(90deg, #182642, #d7a64b 50%, #182642);
+  background: linear-gradient(90deg, #142544, #d7a64b 50%, #142544);
+  box-shadow: 0 1px 10px rgba(20, 37, 68, 0.18);
+}
+
+.site-theme-root[data-site-theme="christmas"] .btn-primary {
+  background: #1c462d;
+  border-color: #1c462d;
+}
+
+.site-theme-root[data-site-theme="christmas"] .btn-primary:hover:not(:disabled) {
+  background: transparent;
+  color: #1c462d;
+}
+
+.site-theme-root[data-site-theme="ramadan"] .btn-primary {
+  background: #142544;
+  border-color: #142544;
+}
+
+.site-theme-root[data-site-theme="ramadan"] .btn-primary:hover:not(:disabled) {
+  background: transparent;
+  color: #142544;
+}
+
+.site-theme-root[data-site-theme="christmas"] .rule-gold {
+  background: linear-gradient(90deg, #8d2635 0%, #e9b958 52%, #1c462d 100%);
+}
+
+.site-theme-root[data-site-theme="ramadan"] .rule-gold {
+  background: linear-gradient(90deg, #142544 0%, #d7a64b 48%, #edc979 100%);
+}
+
+.seasonal-logo {
+  isolation: isolate;
+}
+
+.seasonal-logo::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -0.45rem -0.7rem;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-logo::before {
+  opacity: 1;
+  background: radial-gradient(ellipse, rgba(28, 70, 45, 0.11), transparent 70%);
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-logo::before {
+  opacity: 1;
+  background: radial-gradient(ellipse, rgba(215, 166, 75, 0.16), transparent 70%);
 }
 
 .seasonal-logo-accent {
@@ -544,21 +614,22 @@ a {
 }
 
 .site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent {
-  top: -0.2rem;
-  left: 0.15rem;
+  top: -0.38rem;
+  left: 0.08rem;
   display: block;
-  width: 1.65rem;
-  height: 1.3rem;
-  transform: rotate(-12deg);
+  width: 1.9rem;
+  height: 1.55rem;
+  transform: rotate(-14deg);
   transform-origin: bottom left;
+  filter: drop-shadow(0 2px 2px rgba(70, 22, 29, 0.18));
 }
 
 .site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent::before {
   content: "";
   position: absolute;
-  inset: 0.05rem 0.18rem 0.22rem;
-  background: #a72d39;
-  clip-path: polygon(12% 100%, 48% 0, 100% 100%);
+  inset: 0.08rem 0.2rem 0.24rem;
+  background: linear-gradient(145deg, #bc3b48, #8d2635);
+  clip-path: polygon(8% 100%, 47% 0, 100% 100%);
 }
 
 .site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent::after {
@@ -566,21 +637,33 @@ a {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 1.35rem;
-  height: 0.3rem;
-  border: 1px solid rgba(20, 18, 14, 0.12);
+  width: 1.55rem;
+  height: 0.34rem;
+  border: 1px solid rgba(23, 38, 29, 0.14);
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 1.15rem -0.85rem 0 -0.06rem #fff;
+  background: #fffdf9;
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent-detail {
+  position: absolute;
+  right: -0.02rem;
+  top: 0.03rem;
+  display: block;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: #fffdf9;
+  box-shadow: 0 0 0 1px rgba(23, 38, 29, 0.08);
 }
 
 .site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent {
-  top: -0.45rem;
-  right: -0.85rem;
+  top: -0.48rem;
+  right: -0.95rem;
   display: block;
-  width: 1.7rem;
-  height: 1.7rem;
-  color: #a97822;
+  width: 1.9rem;
+  height: 1.9rem;
+  color: #9a691a;
+  filter: drop-shadow(0 0 7px rgba(215, 166, 75, 0.34));
 }
 
 .site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent::before {
@@ -588,76 +671,232 @@ a {
   position: absolute;
   inset: 0;
   font-family: Georgia, serif;
-  font-size: 1.55rem;
+  font-size: 1.75rem;
   line-height: 1;
 }
 
 .site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent::after {
   content: "✦";
   position: absolute;
-  right: 0;
-  top: -0.08rem;
-  font-size: 0.55rem;
+  right: -0.05rem;
+  top: -0.1rem;
+  font-size: 0.62rem;
 }
 
-.seasonal-snow {
+.site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent-detail {
+  position: absolute;
+  right: 0.08rem;
+  bottom: 0.22rem;
+  display: block;
+  width: 0.22rem;
+  height: 0.22rem;
+  border-radius: 50%;
+  background: #d7a64b;
+}
+
+.seasonal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: 40;
   overflow: hidden;
   contain: strict;
   pointer-events: none;
 }
 
+.seasonal-backdrop__wash {
+  position: absolute;
+  inset: 0;
+}
+
+.seasonal-backdrop--christmas .seasonal-backdrop__wash {
+  background:
+    radial-gradient(circle at -3% 18%, rgba(28, 70, 45, 0.13), transparent 25rem),
+    radial-gradient(circle at 103% 82%, rgba(141, 38, 53, 0.11), transparent 28rem);
+}
+
+.seasonal-christmas-garland {
+  position: absolute;
+  inset: 68px 0 auto;
+  height: 15px;
+  opacity: 0.72;
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(28, 70, 45, 0.78) 0 42%, transparent 45%) 0 0 / 34px 13px repeat-x,
+    linear-gradient(90deg, transparent, rgba(233, 185, 88, 0.78) 15% 85%, transparent) 0 1px / 100% 1px no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(28, 70, 45, 0.12));
+}
+
+.seasonal-snow {
+  position: absolute;
+  inset: 68px 0 0;
+}
+
 .seasonal-snowflake {
   position: absolute;
   top: -1rem;
-  left: var(--snow-left);
-  width: var(--snow-size);
-  height: var(--snow-size);
-  border: 1px solid rgba(35, 76, 53, 0.18);
+  left: var(--seasonal-left);
+  width: var(--seasonal-size);
+  height: var(--seasonal-size);
+  border: 1px solid rgba(28, 70, 45, 0.16);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  animation: seasonal-snow-fall var(--snow-duration) linear var(--snow-delay) infinite;
-  will-change: transform;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.72);
+  opacity: var(--seasonal-opacity);
+  animation: seasonal-snow-fall var(--seasonal-duration) linear var(--seasonal-delay) infinite;
 }
 
 @keyframes seasonal-snow-fall {
-  from { transform: translate3d(0, -2rem, 0) rotate(0deg); }
-  to { transform: translate3d(var(--snow-drift), calc(100dvh + 3rem), 0) rotate(360deg); }
+  from { transform: translate3d(0, -2rem, 0); }
+  to { transform: translate3d(var(--seasonal-drift), calc(100dvh + 3rem), 0); }
 }
 
-.seasonal-ramadan-ornament {
-  position: fixed;
-  top: 5.25rem;
-  right: clamp(1rem, 3vw, 3rem);
-  z-index: 40;
-  width: 3.75rem;
-  pointer-events: none;
-  opacity: 0.72;
-}
-
-.seasonal-ramadan-ornament svg {
-  display: block;
-  width: 100%;
-  height: auto;
+.seasonal-christmas-sprig {
+  position: absolute;
+  bottom: -2rem;
+  width: clamp(7rem, 14vw, 12rem);
   overflow: visible;
-  fill: #d7a64b;
-  stroke: #182642;
-  stroke-width: 1.1;
+  fill: #9c2636;
+  stroke: #1c462d;
+  stroke-width: 3;
   stroke-linecap: round;
+  opacity: 0.32;
+  filter: drop-shadow(0 8px 12px rgba(28, 70, 45, 0.1));
 }
 
-@media (max-width: 640px) {
-  .seasonal-snowflake:nth-child(n + 8) { display: none; }
-  .seasonal-ramadan-ornament {
-    top: 4.75rem;
-    right: 0.75rem;
-    width: 2.75rem;
-    opacity: 0.55;
+.seasonal-christmas-sprig--left { left: -1.5rem; }
+.seasonal-christmas-sprig--right {
+  right: -1.5rem;
+  transform: scaleX(-1);
+}
+.seasonal-sprig-stem { stroke-width: 4; }
+
+.seasonal-backdrop--ramadan .seasonal-backdrop__wash {
+  background:
+    radial-gradient(circle at 102% 18%, rgba(20, 37, 68, 0.16), transparent 27rem),
+    radial-gradient(circle at -2% 80%, rgba(215, 166, 75, 0.13), transparent 30rem);
+}
+
+.seasonal-ramadan-canopy {
+  position: absolute;
+  inset: 68px 0 auto;
+  height: 18px;
+  opacity: 0.72;
+  border-top: 1px solid rgba(215, 166, 75, 0.7);
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(20, 37, 68, 0.74) 0 42%, transparent 45%) 0 0 / 42px 17px repeat-x,
+    radial-gradient(circle, #d7a64b 0 2px, transparent 2.5px) 10px 5px / 42px 17px repeat-x;
+  filter: drop-shadow(0 3px 4px rgba(20, 37, 68, 0.12));
+}
+
+.seasonal-ramadan-star {
+  position: absolute;
+  left: var(--seasonal-left);
+  top: var(--seasonal-top);
+  width: 6px;
+  height: 6px;
+  background: #d7a64b;
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  opacity: var(--seasonal-opacity);
+  filter: drop-shadow(0 0 4px rgba(215, 166, 75, 0.62));
+  animation: seasonal-star-glow 4.8s ease-in-out var(--seasonal-delay) infinite;
+}
+
+@keyframes seasonal-star-glow {
+  0%, 100% { transform: scale(0.76); }
+  50% { transform: scale(1.12); }
+}
+
+.seasonal-ramadan-lantern {
+  position: absolute;
+  left: var(--seasonal-left);
+  top: 68px;
+  width: 1px;
+  height: var(--seasonal-length);
+  border-left: 1px solid rgba(20, 37, 68, 0.52);
+  opacity: var(--seasonal-opacity);
+  transform-origin: 50% 0;
+  animation: seasonal-lantern-sway 7s ease-in-out var(--seasonal-delay) infinite;
+}
+
+.seasonal-ramadan-lantern::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: calc(100% - 1px);
+  width: 20px;
+  height: 30px;
+  border: 1px solid rgba(20, 37, 68, 0.72);
+  background: linear-gradient(90deg, #142544 0 18%, #d7a64b 19% 81%, #142544 82%);
+  clip-path: polygon(24% 0, 76% 0, 100% 25%, 84% 86%, 50% 100%, 16% 86%, 0 25%);
+  box-shadow: 0 0 16px rgba(215, 166, 75, 0.4);
+}
+
+.seasonal-ramadan-lantern::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: calc(100% + 8px);
+  width: 6px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff1b8;
+  box-shadow: 0 0 12px 4px rgba(215, 166, 75, 0.36);
+}
+
+@keyframes seasonal-lantern-sway {
+  0%, 100% { transform: rotate(-1.4deg); }
+  50% { transform: rotate(1.4deg); }
+}
+
+.seasonal-ramadan-crescent {
+  position: absolute;
+  right: clamp(-2.5rem, -2vw, -0.5rem);
+  top: 18%;
+  width: clamp(9rem, 17vw, 15rem);
+  fill: #d7a64b;
+  opacity: 0.18;
+  filter: drop-shadow(0 0 22px rgba(215, 166, 75, 0.28));
+  animation: seasonal-crescent-float 12s ease-in-out infinite;
+}
+
+@keyframes seasonal-crescent-float {
+  0%, 100% { transform: translate3d(0, -5px, 0) rotate(-2deg); }
+  50% { transform: translate3d(-4px, 7px, 0) rotate(2deg); }
+}
+
+@media (max-width: 768px) {
+  .site-theme-root[data-site-theme="christmas"],
+  .site-theme-root[data-site-theme="ramadan"] { background-attachment: scroll; }
+  .seasonal-christmas-garland,
+  .seasonal-ramadan-canopy { top: 68px; }
+  .seasonal-snowflake:nth-child(n + 11),
+  .seasonal-ramadan-star:nth-child(n + 7) { display: none; }
+  .seasonal-christmas-sprig { width: 7.5rem; opacity: 0.24; }
+  .seasonal-christmas-sprig--right { display: none; }
+  .seasonal-ramadan-lantern:nth-child(3) { display: none; }
+  .seasonal-ramadan-crescent {
+    right: -3rem;
+    top: 21%;
+    width: 10rem;
+    opacity: 0.14;
   }
+}
+
+@media (max-width: 480px) {
+  .seasonal-snowflake:nth-child(n + 8),
+  .seasonal-ramadan-star:nth-child(n + 5) { display: none; }
+  .seasonal-christmas-sprig { opacity: 0.2; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .seasonal-snow { display: none; }
+  .seasonal-ramadan-star,
+  .seasonal-ramadan-lantern,
+  .seasonal-ramadan-crescent { animation: none !important; }
+}
+
+@media print {
+  .seasonal-backdrop,
+  .site-theme-root[data-site-theme="christmas"]::before,
+  .site-theme-root[data-site-theme="ramadan"]::before,
+  .seasonal-logo-accent { display: none !important; }
 }

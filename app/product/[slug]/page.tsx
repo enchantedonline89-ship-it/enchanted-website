@@ -15,6 +15,8 @@ import { findBySlug, productHref } from "@/lib/product-url"
 import { getCatalog } from "@/lib/catalog"
 import type { SizeSystem } from "@/types"
 import ProductPrice from "@/components/public/ProductPrice"
+import { getD1Database } from "@/lib/cloudflare/d1"
+import { getRecommendationIds } from "@/lib/recommendations"
 
 export const revalidate = 3600
 
@@ -75,17 +77,28 @@ export default async function ProductPage({
   const { product, category, products, source } = found
   const sizeSystem: SizeSystem = (category?.size_system as SizeSystem) ?? "none"
 
-  // Same category first, topped up from the rest so a strip is never left with
-  // two items in it.
+  // The learned ranking is fed only by delivered orders. A content-based,
+  // deterministic fallback works from the first catalog upload.
   const sameCategory = products.filter(
     (p) => p.id !== product.id && p.category_id === product.category_id,
   )
   const topUp = products.filter(
     (p) => p.id !== product.id && p.category_id !== product.category_id,
   )
-  const related = [...sameCategory, ...topUp].slice(0, 4)
-  const relatedHeading =
-    sameCategory.length >= 4 && category ? `More in ${category.name}` : "More from the shop"
+  const db = source === "live" ? await getD1Database() : null
+  const learned = db ? await getRecommendationIds(db, product.id) : { ids: [], heading: "Similar styles" }
+  const learnedProducts = learned.ids
+    .map((id) => products.find((candidate) => candidate.id === id))
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
+  const fallback = [...sameCategory, ...topUp].filter(
+    (candidate) => !learned.ids.includes(candidate.id),
+  )
+  const related = [...learnedProducts, ...fallback].slice(0, 4)
+  const relatedHeading = learnedProducts.length
+    ? learned.heading
+    : sameCategory.length >= 4 && category
+      ? `Similar styles in ${category.name}`
+      : "Similar styles"
 
   const details: Array<[string, string]> = []
   if (product.materials) details.push(["Materials", product.materials])
@@ -130,16 +143,6 @@ export default async function ProductPage({
       <Navbar />
 
       <main id="main" className="pt-[68px]">
-        {source === "mock" && (
-          <aside
-            className="border-b border-signal-warn/30 bg-signal-warn/10 px-5 py-2.5 text-center text-[0.8125rem] text-ink"
-            aria-label="Preview catalog notice"
-          >
-            <strong className="font-medium">Client preview</strong>
-            <span aria-hidden="true"> — </span>
-            This sample product and price are for review only.
-          </aside>
-        )}
         <div className="mx-auto max-w-[1440px] lg:grid lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-14">
           <div className="lg:min-w-0">
             <ProductGallery product={product} />

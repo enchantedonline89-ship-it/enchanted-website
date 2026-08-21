@@ -1,0 +1,92 @@
+name: Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Next.js and Cloudflare verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      # Immutable SHAs prevent a mutable action tag from changing beneath us.
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan tracked files and history for high-confidence secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          postgres_scheme='post''gres(ql)?'
+          mysql_scheme='my''sql'
+          secret_pattern="AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{30,}|github_pat_[A-Za-z0-9_]{50,}|sk_live_[A-Za-z0-9]{20,}|rk_live_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|sntrys_[A-Za-z0-9_-]{20,}|phx_[A-Za-z0-9_-]{20,}|re_[A-Za-z0-9]{24,}|GOCSPX-[A-Za-z0-9_-]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|${postgres_scheme}://[^[:space:]:]+:[^[:space:]@]+@|${mysql_scheme}://[^[:space:]:]+:[^[:space:]@]+@|(RESEND_API_KEY|SENTRY_AUTH_TOKEN|POSTHOG_PERSONAL_API_KEY|GOOGLE_CLIENT_SECRET|AUTH_SECRET|ADMIN_PASSWORD)[[:space:]]*[:=][[:space:]]*['\"][^'\"]{12,}"
+          current_matches="$(git grep -IlE "$secret_pattern" -- . ':(exclude)package-lock.json' || true)"
+          history_matches="$(
+            git rev-list --all |
+              while read -r commit; do
+                git grep -IlE "$secret_pattern" "$commit" -- . ':(exclude)package-lock.json' 2>/dev/null || true
+              done |
+              sort -u
+          )"
+          if [[ -n "$current_matches" || -n "$history_matches" ]]; then
+            echo "High-confidence secret pattern found. Only file locations are shown; values are suppressed."
+            [[ -n "$current_matches" ]] && printf 'Current tree:\n%s\n' "$current_matches"
+            [[ -n "$history_matches" ]] && printf 'Git history:\n%s\n' "$history_matches"
+            exit 1
+          fi
+          echo "No high-confidence secret patterns found in tracked files or Git history."
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Reject high-severity production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check without incremental state
+        run: ./node_modules/.bin/tsc --noEmit --incremental false
+
+      - name: Run Vitest suite
+        run: npm test
+
+      - name: Compile and list Playwright specifications
+        run: ./node_modules/.bin/playwright test --list
+
+      - name: Validate Cloudflare binding types
+        run: ./node_modules/.bin/wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts
+
+      - name: Build the OpenNext Worker bundle
+        run: ./node_modules/.bin/opennextjs-cloudflare build
+
+      - name: Validate the Worker bundle without deploying
+        run: ./node_modules/.bin/wrangler deploy --dry-run --outdir .wrangler-dry-run
+
+      - name: Check Worker startup limits
+        run: ./node_modules/.bin/wrangler check startup

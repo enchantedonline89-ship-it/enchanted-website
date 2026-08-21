@@ -32,15 +32,14 @@ export default function PrivacyPage() {
       <PageShell
         title="Privacy policy"
         standfirst="What we collect when you order, why we hold it, and how to have it removed."
-        meta="Last updated March 2026"
+        meta="Last updated 21 August 2026"
       >
       <div>
         <section>
           <h2>Who we are</h2>
           <p>
-            Enchanted Style is a Lebanese women&apos;s fashion brand.
-            We sell clothing, shoes, and accessories and process orders via WhatsApp.
-            Contact us at{' '}
+            Enchanted is a Lebanese women&apos;s fashion store. We sell clothing, shoes,
+            and accessories with cash on delivery. Contact us at{' '}
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               +961 81 492 994
             </a>.
@@ -51,12 +50,12 @@ export default function PrivacyPage() {
           <h2>Information we collect</h2>
           <ul>
             <li>
-              <strong className="text-ink">Account info:</strong> When you sign in with
-              Google, we receive your name, email address, and profile picture from Google.
+              <strong className="text-ink">Account info:</strong> Your name and email,
+              plus a profile picture if you choose Google Sign-In.
             </li>
             <li>
               <strong className="text-ink">Order info:</strong> Full name, phone number,
-              delivery address, and order details you provide at checkout.
+              saved Lebanon delivery addresses, and order details you provide at checkout.
             </li>
             <li>
               <strong className="text-ink">Usage and diagnostics:</strong> Standard
@@ -71,7 +70,7 @@ export default function PrivacyPage() {
           <h2>How we use your information</h2>
           <ul>
             <li>To process and fulfill your orders</li>
-            <li>To contact you via WhatsApp about your delivery</li>
+            <li>To email order confirmations and status updates</li>
             <li>To show you your order history on the website</li>
             <li>To improve our website and service</li>
           </ul>
@@ -93,26 +92,31 @@ export default function PrivacyPage() {
         <section>
           <h2>Data storage</h2>
           <p>
-            Your account and order data is stored securely on{' '}
-            <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-ink hover:underline">
-              Supabase
-            </a>{' '}
-            (EU region). We retain order data for up to 3 years for business records.
+            Account, address, catalog and order records are stored in Cloudflare D1;
+            product media is stored in Cloudflare R2. Transactional email is handled by
+            Resend. If you consent, PostHog processes product analytics and Sentry may
+            process masked diagnostic replays. We keep order records only as long as
+            reasonably required for fulfilment, support and business record obligations.
           </p>
         </section>
 
         <section>
           <h2>Your rights</h2>
           <p>
-            You may request deletion of your account and associated data at any time by
-            messaging us on WhatsApp. We will process your request within 30 days.
+            You can manage your saved addresses from your account. You may request access,
+            correction or deletion by emailing{' '}
+            <a href="mailto:Enchantedonline89@gmail.com" className="text-ink hover:underline">
+              Enchantedonline89@gmail.com
+            </a>{' '}
+            or messaging us on WhatsApp. Open orders must be completed or cancelled before
+            an account can be deleted.
           </p>
         </section>
 
         <section>
           <h2>Cookies</h2>
           <p>
-            We use essential cookies for authentication. If product analytics is enabled,
+            We use essential cookies for authentication. Only after you choose Allow analytics,
             it also stores a first-party identifier in a cookie and local storage so we can
             understand page visits and clicks. We do not use advertising cookies or sell
             this data.

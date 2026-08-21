@@ -1,147 +1,130 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
 import PageShell from '@/components/public/PageShell'
 import BreadcrumbJsonLd from '@/components/seo/BreadcrumbJsonLd'
 import { SITE_NAME } from '@/components/seo/site'
-import { Order } from '@/types'
+import { requireCustomer } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
 
 export const dynamic = 'force-dynamic'
 
 const TITLE = 'Your orders'
-const DESCRIPTION =
-  'Everything you have ordered from us, newest first, with where each one currently stands.'
+const DESCRIPTION = 'Your Enchanted orders and their current delivery status.'
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: '/orders' },
-  // Auth-gated, customer-specific, and middleware.ts already redirects any
-  // anonymous request away from this route. noindex is defence in depth
-  // in case that redirect behaviour ever changes. follow stays true: the
-  // outbound "Browse the catalog" link should still pass through.
   robots: { index: false, follow: true },
-  openGraph: {
-    title: TITLE,
-    description: DESCRIPTION,
-    url: '/orders',
-    siteName: SITE_NAME,
-    type: 'website',
-    locale: 'en_US',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: '/orders', siteName: SITE_NAME, type: 'website', locale: 'en_US' },
 }
 
-/** Status carries a word and a colour. No decorative dot. */
-const STATUS: Record<Order['status'], { label: string; className: string }> = {
+type Status = 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled'
+type OrderRow = {
+  id: string
+  order_number: string
+  status: Status
+  city: string
+  area: string
+  delivery_fee_cents: number
+  total_cents: number
+  created_at: string
+}
+type ItemRow = {
+  product_name: string
+  size: string | null
+  color_name: string | null
+  quantity: number
+  line_total_cents: number
+}
+
+const STATUS: Record<Status, { label: string; className: string }> = {
   pending: { label: 'Awaiting confirmation', className: 'text-signal-warn border-signal-warn/50' },
-  confirmed: { label: 'Confirmed, on its way', className: 'text-ink border-line-strong' },
+  confirmed: { label: 'Confirmed', className: 'text-ink border-line-strong' },
+  preparing: { label: 'Being prepared', className: 'text-ink border-line-strong' },
+  out_for_delivery: { label: 'Out for delivery', className: 'text-ink border-line-strong' },
   delivered: { label: 'Delivered', className: 'text-signal-ok border-signal-ok/50' },
   cancelled: { label: 'Cancelled', className: 'text-signal-error border-signal-error/50' },
 }
 
+const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
+
 export default async function OrdersPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/')
+  const session = await requireCustomer()
+  const db = await getD1Database()
+  const orderRows = db
+    ? await db.prepare(
+        `SELECT id, order_number, status, city, area, delivery_fee_cents, total_cents, created_at
+         FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`,
+      ).bind(session.user.id).all<OrderRow>()
+    : { results: [] as OrderRow[] }
+  const itemResults = db && orderRows.results.length
+    ? await db.batch<ItemRow>(orderRows.results.map((order) => db.prepare(
+        `SELECT product_name, size, color_name, quantity, line_total_cents
+         FROM order_items WHERE order_id = ? ORDER BY created_at, id`,
+      ).bind(order.id)))
+    : []
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  const list = (orders ?? []) as Order[]
+  const orders = orderRows.results.map((order, index) => ({
+    ...order,
+    items: itemResults[index]?.results ?? [],
+  }))
 
   return (
     <>
       <BreadcrumbJsonLd items={[{ name: TITLE, path: '/orders' }]} />
       <PageShell
-        title="Your orders"
-        standfirst="Everything you have ordered from us, newest first, with where each one currently stands."
-        meta={list.length > 0 ? `${list.length} ${list.length === 1 ? 'order' : 'orders'}` : undefined}
+        title={TITLE}
+        standfirst="Every order appears here immediately, starting as awaiting confirmation."
+        meta={orders.length ? `${orders.length} ${orders.length === 1 ? 'order' : 'orders'}` : undefined}
       >
-      {list.length === 0 ? (
-        <div className="flex flex-col items-start gap-4">
-          <p className="text-lg text-ink">No orders yet.</p>
-          <p className="max-w-[60ch]">
-            When you place your first order it will appear here, along with its
-            delivery status and the total due to the driver.
-          </p>
-          <Link href="/#catalog" className="btn btn-primary mt-2">
-            Browse the catalog
-          </Link>
+        <div className="mb-8 flex flex-wrap gap-2">
+          <Link href="/account/addresses" className="btn btn-ghost">Manage addresses</Link>
+          <Link href="/track-order" className="btn btn-ghost">Track by order number</Link>
         </div>
-      ) : (
-        <ul className="flex flex-col">
-          {list.map((order) => {
-            const status = STATUS[order.status]
-            return (
-              <li key={order.id} className="border-t border-line py-8 first:border-t-0 first:pt-0">
-                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-                  <div>
-                    <p className="tnum text-[0.9375rem] text-ink">
-                      Order {order.order_number}
-                    </p>
-                    <p className="t-meta mt-1.5">
-                      {new Date(order.created_at).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </p>
+        {orders.length === 0 ? (
+          <div className="flex flex-col items-start gap-4">
+            <p className="text-lg text-ink">No orders yet.</p>
+            <p>Your first order will appear here as soon as it is sent.</p>
+            <Link href="/#catalog" className="btn btn-primary mt-2">Shop All</Link>
+          </div>
+        ) : (
+          <ul className="flex flex-col">
+            {orders.map((order) => {
+              const status = STATUS[order.status]
+              return (
+                <li key={order.id} className="border-t border-line py-8 first:border-t-0 first:pt-0">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="tnum text-[0.9375rem] text-ink">Order {order.order_number}</p>
+                      <p className="t-meta mt-1.5">
+                        {new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <span className={`t-meta border px-2.5 py-1.5 ${status.className}`}>{status.label}</span>
                   </div>
-                  <span className={`t-meta border px-2.5 py-1.5 ${status.className}`}>
-                    {status.label}
-                  </span>
-                </div>
-
-                <ul className="mt-6 flex flex-col gap-2">
-                  {order.items.map((item, i) => (
-                    <li key={i} className="flex justify-between gap-4 text-[0.875rem]">
-                      <span className="text-ink-dim">
-                        {item.name}
-                        {item.size ? `, size ${item.size}` : ''}
-                        {item.qty > 1 ? `, ${item.qty} pieces` : ''}
-                      </span>
-                      <span className="tnum shrink-0 text-ink">
-                        ${(item.price * item.qty).toFixed(2)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <dl className="mt-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-line pt-4 text-[0.875rem]">
-                  <div className="flex gap-2">
-                    <dt className="text-ink-faint">Delivery</dt>
-                    <dd className="tnum text-ink-dim">
-                      {order.area === 'beirut'
-                        ? 'Beirut'
-                        : `Outside Beirut${order.city ? `, ${order.city}` : ''}`}
-                      , ${order.delivery_fee.toFixed(2)}
-                    </dd>
-                  </div>
-                  <div className="flex gap-2">
-                    <dt className="text-ink-faint">Total</dt>
-                    <dd className="tnum text-ink">${order.total.toFixed(2)}</dd>
-                  </div>
-                </dl>
-                <Link
-                  href="/track-order"
-                  className="t-meta link-grow mt-4 inline-flex text-ink-dim hover:text-ink"
-                >
-                  Track this order
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                  <ul className="mt-6 flex flex-col gap-2">
+                    {order.items.map((item, index) => (
+                      <li key={index} className="flex justify-between gap-4 text-[0.875rem]">
+                        <span className="text-ink-dim">
+                          {item.product_name}
+                          {item.color_name ? `, ${item.color_name}` : ''}
+                          {item.size ? `, size ${item.size}` : ''}
+                          {item.quantity > 1 ? `, ${item.quantity} pieces` : ''}
+                        </span>
+                        <span className="tnum shrink-0 text-ink">{money(item.line_total_cents)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <dl className="mt-5 flex flex-wrap justify-between gap-3 border-t border-line pt-4 text-[0.875rem]">
+                    <div className="flex gap-2"><dt className="text-ink-faint">Delivery</dt><dd className="text-ink-dim">{order.area}, {order.city} · {money(order.delivery_fee_cents)}</dd></div>
+                    <div className="flex gap-2"><dt className="text-ink-faint">Total</dt><dd className="tnum text-ink">{money(order.total_cents)}</dd></div>
+                  </dl>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </PageShell>
     </>
   )

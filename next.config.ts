@@ -5,8 +5,7 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
 const isDev = process.env.NODE_ENV === 'development'
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
-// Applied to every response. Adjust the CSP connect-src if the Supabase project
-// URL changes (add the real URL once the client configures their project).
+// Applied to every response.
 const securityHeaders = [
   // Prevent the site from being embedded in iframes (clickjacking protection)
   {
@@ -37,9 +36,9 @@ const securityHeaders = [
   // - default-src: only same-origin by default
   // - script-src: self + inline scripts required by Next.js hydration + GSAP CDN is NOT used (all local)
   // - style-src: self + unsafe-inline required by Tailwind v4 runtime
-  // - img-src: self + data URIs + Unsplash (mock images) + Supabase storage
+  // - img-src: same-origin Cloudflare media plus Google profile images
   // - font-src: self + Google Fonts (if used)
-  // - connect-src: self + Supabase API + wa.me for WhatsApp link preflight
+  // - connect-src: same-origin API/analytics plus Google authentication
   // - frame-ancestors: none (reinforces X-Frame-Options)
   {
     key: "Content-Security-Policy",
@@ -51,9 +50,8 @@ const securityHeaders = [
       // unsafe-inline required by Tailwind v4 CSS-in-JS runtime approach
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co https://supabase.co https://lh3.googleusercontent.com",
-      // connect-src covers Supabase REST + Auth + Realtime WebSocket
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://wa.me https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
+      "img-src 'self' data: blob: https://lh3.googleusercontent.com",
+      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
       "media-src 'self'",
       // PostHog's session recorder and Sentry's replay both run in web workers
       // created from blob URLs. Without this they fail silently.
@@ -75,25 +73,10 @@ const securityHeaders = [
 // That keeps both working behind the ad blockers this audience runs, and means
 // connect-src above stays 'self' with no third-party host added to the CSP.
 const POSTHOG_PROXY_PATH = "/atelier"
-const POSTHOG_ASSET_HOST = "https://us-assets.i.posthog.com"
-const POSTHOG_INGEST_HOST = "https://us.i.posthog.com"
+const POSTHOG_ASSET_HOST = process.env.NEXT_PUBLIC_POSTHOG_ASSET_HOST ?? "https://eu-assets.i.posthog.com"
+const POSTHOG_INGEST_HOST = process.env.NEXT_PUBLIC_POSTHOG_INGEST_HOST ?? "https://eu.i.posthog.com"
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        // Supabase Storage. Pinned to this project's ref rather than a wildcard,
-        // which would let the image optimizer fetch from any Supabase project.
-        // Update alongside NEXT_PUBLIC_SUPABASE_URL when the project is rebuilt.
-        protocol: "https",
-        hostname: "mnbdyiemlifvxvgobfwq.supabase.co",
-      },
-    ],
-  },
   // Apply security headers to all routes
   async headers() {
     return [

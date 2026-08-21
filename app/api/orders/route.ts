@@ -1,373 +1,405 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { isSupabaseMockMode } from '@/lib/mock-data'
-import { mockOrderNumber } from '@/lib/mock-order'
-import { applyPromotions, type Promotion, type PromotionPrice } from '@/lib/promotions'
+import { getAuth } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
+import { getCloudflareEnv } from '@/lib/cloudflare/env'
+import { enqueueEmail } from '@/lib/email/queue'
 
-// ─── Rate limiting (in-memory, per server instance) ──────────────────────────
-// Limits each IP to MAX_REQUESTS submissions within WINDOW_MS.
-// This remains best-effort per isolate; use a durable Cloudflare binding when
-// strict cross-isolate enforcement is required.
-const WINDOW_MS = 60_000   // 1 minute
-const MAX_REQUESTS = 5     // max 5 orders per IP per minute
-const MAX_TRACKED_IPS = 5_000
-
-const ipHits = new Map<string, { count: number; resetAt: number }>()
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = ipHits.get(ip)
-  if (!entry || now > entry.resetAt) {
-    if (!entry && ipHits.size >= MAX_TRACKED_IPS) {
-      for (const [key, value] of ipHits) {
-        if (now > value.resetAt) ipHits.delete(key)
-      }
-      if (ipHits.size >= MAX_TRACKED_IPS) return true
-    }
-    ipHits.set(ip, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-  entry.count++
-  return entry.count > MAX_REQUESTS
-}
-
-// ─── Validation helpers ───────────────────────────────────────────────────────
-
-const VALID_AREAS = ['beirut', 'outside']
-
-interface OrderItem {
+type SubmittedLine = {
   product_id: string
-  name: string
+  variant_id: string | null
   size: string | null
   qty: number
-  price: number
-  original_price?: number
-  discount_percent?: number
-  promotion_name?: string
 }
 
-interface ValidationError {
-  field: string
-  message: string
+type CatalogRow = {
+  id: string
+  name: string
+  price_cents: number | null
+  sizes_json: string
+  category_id: string | null
+  is_active: number
+  variant_id: string | null
+  sku: string | null
+  variant_size: string | null
+  stock_quantity: number | null
+  variant_active: number | null
+  color_name: string | null
+  color_hex: string | null
+  inventory_tracked: number
 }
 
-function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
-  const errors: ValidationError[] = []
-
-  // full_name
-  if (typeof body.full_name !== 'string' || body.full_name.trim().length < 2) {
-    errors.push({ field: 'full_name', message: 'Full name must be at least 2 characters' })
-  } else if (body.full_name.trim().length > 100) {
-    errors.push({ field: 'full_name', message: 'Full name is too long' })
-  }
-
-  // user_email — basic format check only; not strictly required for guest orders
-  if (typeof body.user_email !== 'string' || !body.user_email.includes('@') || body.user_email.length > 254) {
-    errors.push({ field: 'user_email', message: 'A valid email is required' })
-  }
-
-  // phone
-  if (typeof body.phone !== 'string' || body.phone.trim().length < 5) {
-    errors.push({ field: 'phone', message: 'Phone number is required' })
-  } else if (body.phone.trim().length > 30) {
-    errors.push({ field: 'phone', message: 'Phone number is too long' })
-  }
-
-  // delivery_address
-  if (typeof body.delivery_address !== 'string' || body.delivery_address.trim().length < 5) {
-    errors.push({ field: 'delivery_address', message: 'Delivery address must be at least 5 characters' })
-  } else if (body.delivery_address.trim().length > 300) {
-    errors.push({ field: 'delivery_address', message: 'Delivery address is too long' })
-  }
-
-  // area
-  if (typeof body.area !== 'string' || !VALID_AREAS.includes(body.area)) {
-    errors.push({ field: 'area', message: 'Area must be "beirut" or "outside"' })
-  }
-
-  // city (required outside Beirut, otherwise optional but constrained)
-  if (body.area === 'outside' && (typeof body.city !== 'string' || body.city.trim().length < 2)) {
-    errors.push({ field: 'city', message: 'Town or city is required outside Beirut' })
-  }
-  if (body.city !== undefined && body.city !== null) {
-    if (typeof body.city !== 'string' || body.city.length > 100) {
-      errors.push({ field: 'city', message: 'City name is too long' })
-    }
-  }
-
-  // order_notes (optional but constrained when present)
-  if (body.order_notes !== undefined && body.order_notes !== null) {
-    if (typeof body.order_notes !== 'string' || body.order_notes.length > 500) {
-      errors.push({ field: 'order_notes', message: 'Order notes must be under 500 characters' })
-    }
-  }
-
-  // delivery_fee — one flat rate everywhere in Lebanon
-  const VALID_DELIVERY_FEES = [4]
-  const deliveryFee = Number(body.delivery_fee)
-  if (!Number.isFinite(deliveryFee) || !VALID_DELIVERY_FEES.includes(deliveryFee)) {
-    errors.push({ field: 'delivery_fee', message: 'Delivery fee must be $4 anywhere in Lebanon' })
-  } else if (typeof body.area === 'string' && VALID_AREAS.includes(body.area)) {
-    // Cross-validate: fee must match the selected area to prevent fee manipulation
-    const expectedFee = 4
-    if (deliveryFee !== expectedFee) {
-      errors.push({ field: 'delivery_fee', message: `Delivery fee for ${body.area === 'beirut' ? 'Beirut' : 'outside Beirut'} must be $${expectedFee}` })
-    }
-  }
-
-  // items
-  if (!Array.isArray(body.items)) {
-    errors.push({ field: 'items', message: 'Items must be an array' })
-  } else if (body.items.length === 0) {
-    errors.push({ field: 'items', message: 'Order must contain at least one item' })
-  } else if (body.items.length > 50) {
-    errors.push({ field: 'items', message: 'Order cannot exceed 50 items' })
-  } else {
-    body.items.forEach((item: unknown, idx: number) => {
-      if (typeof item !== 'object' || item === null) {
-        errors.push({ field: `items[${idx}]`, message: 'Each item must be an object' })
-        return
-      }
-      const it = item as Record<string, unknown>
-
-      if (typeof it.product_id !== 'string' || it.product_id.trim().length === 0 || it.product_id.length > 64) {
-        errors.push({ field: `items[${idx}].product_id`, message: 'Item is missing a product reference' })
-      }
-      if (typeof it.name !== 'string' || it.name.trim().length === 0 || it.name.length > 200) {
-        errors.push({ field: `items[${idx}].name`, message: 'Item name is invalid' })
-      }
-      if (it.size !== null && (typeof it.size !== 'string' || it.size.length > 20)) {
-        errors.push({ field: `items[${idx}].size`, message: 'Item size is invalid' })
-      }
-      const qty = Number(it.qty)
-      if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
-        errors.push({ field: `items[${idx}].qty`, message: 'Item quantity must be between 1 and 99' })
-      }
-      const price = Number(it.price)
-      if (!Number.isFinite(price) || price < 0 || price > 10_000) {
-        errors.push({ field: `items[${idx}].price`, message: 'Item price is invalid' })
-      }
-    })
-  }
-
-  // subtotal — must be a positive finite number
-  const subtotal = Number(body.subtotal)
-  if (!Number.isFinite(subtotal) || subtotal < 0 || subtotal > 100_000) {
-    errors.push({ field: 'subtotal', message: 'Subtotal is invalid' })
-  }
-
-  // total — must equal subtotal + delivery_fee (within $0.01 tolerance for floating-point)
-  const total = Number(body.total)
-  if (!Number.isFinite(total) || total < 0 || total > 100_000) {
-    errors.push({ field: 'total', message: 'Total is invalid' })
-  } else if (errors.length === 0) {
-    const expectedTotal = subtotal + deliveryFee
-    if (Math.abs(total - expectedTotal) > 0.01) {
-      errors.push({ field: 'total', message: 'Total does not match subtotal + delivery fee' })
-    }
-  }
-
-  return errors
+type PromotionRow = {
+  name: string
+  scope: 'sitewide' | 'category'
+  category_id: string | null
+  discount_basis_points: number
 }
 
-// ─── POST /api/orders ─────────────────────────────────────────────────────────
+type DeliveryDetails = {
+  recipientName: string
+  phoneE164: string
+  governorate: string
+  city: string
+  area: string
+  street: string
+  building: string | null
+  floor: string | null
+  landmark: string | null
+  deliveryNotes: string | null
+}
+
+function text(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : ''
+}
+
+function nullableText(value: unknown, max: number): string | null {
+  const normalized = text(value, max)
+  return normalized || null
+}
+
+function normalizeLebanesePhone(value: unknown): string | null {
+  let raw = text(value, 30).replace(/[\s().-]/g, '')
+  if (raw.startsWith('00')) raw = `+${raw.slice(2)}`
+  if (raw.startsWith('961')) raw = `+${raw}`
+  if (raw.startsWith('0')) raw = `+961${raw.slice(1)}`
+  return /^\+961\d{7,8}$/.test(raw) ? raw : null
+}
+
+function parseSubmittedLines(value: unknown): SubmittedLine[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 50) return null
+  const lines: SubmittedLine[] = []
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) return null
+    const item = raw as Record<string, unknown>
+    const productId = text(item.product_id, 64)
+    const variantId = nullableText(item.variant_id, 64)
+    const size = nullableText(item.size, 30)
+    const qty = Number(item.qty)
+    if (!productId || !Number.isInteger(qty) || qty < 1 || qty > 20) return null
+    lines.push({ product_id: productId, variant_id: variantId, size, qty })
+  }
+  return lines
+}
+
+function orderNumber(): string {
+  const now = new Date()
+  const yy = String(now.getUTCFullYear()).slice(-2)
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const random = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
+  return `ES-${yy}${mm}-${String(random).padStart(6, '0')}`
+}
+
+async function randomHash(): Promise<string> {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function sameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin')
+  return Boolean(origin && origin === request.nextUrl.origin)
+}
+
+async function deliveryDetails(
+  db: D1Database,
+  userId: string,
+  body: Record<string, unknown>,
+): Promise<DeliveryDetails | null> {
+  const addressId = nullableText(body.address_id, 64)
+  if (addressId) {
+    const address = await db.prepare(
+      `SELECT recipient_name, phone_e164, governorate, city, area, street,
+              building, floor, landmark, delivery_notes
+       FROM addresses
+       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+    ).bind(addressId, userId).first<{
+      recipient_name: string
+      phone_e164: string
+      governorate: string
+      city: string
+      area: string
+      street: string
+      building: string | null
+      floor: string | null
+      landmark: string | null
+      delivery_notes: string | null
+    }>()
+    if (!address) return null
+    return {
+      recipientName: address.recipient_name,
+      phoneE164: address.phone_e164,
+      governorate: address.governorate,
+      city: address.city,
+      area: address.area,
+      street: address.street,
+      building: address.building,
+      floor: address.floor,
+      landmark: address.landmark,
+      deliveryNotes: address.delivery_notes,
+    }
+  }
+
+  const recipientName = text(body.recipient_name ?? body.full_name, 100)
+  const phoneE164 = normalizeLebanesePhone(body.phone_e164 ?? body.phone)
+  const oldArea = text(body.area, 120)
+  const city = text(body.city, 100) || (oldArea === 'beirut' ? 'Beirut' : '')
+  const governorate = text(body.governorate, 80) || (oldArea === 'beirut' ? 'Beirut' : city)
+  const area = oldArea === 'beirut' ? 'Beirut' : text(body.delivery_area ?? body.area, 120)
+  const street = text(body.street ?? body.delivery_address, 200)
+  if (
+    recipientName.length < 2 ||
+    !phoneE164 ||
+    governorate.length < 2 ||
+    city.length < 2 ||
+    area.length < 2 ||
+    street.length < 2
+  ) return null
+
+  return {
+    recipientName,
+    phoneE164,
+    governorate,
+    city,
+    area,
+    street,
+    building: nullableText(body.building, 100),
+    floor: nullableText(body.floor, 40),
+    landmark: nullableText(body.landmark, 160),
+    deliveryNotes: nullableText(body.delivery_notes, 500),
+  }
+}
 
 export async function POST(request: NextRequest) {
-  // Rate limit by IP.
-  // Prefer the address set by Cloudflare's edge. Fall back to common reverse-
-  // proxy headers, taking the final forwarded value rather than a client-
-  // supplied first value.
-  const cloudflareIp = request.headers.get('cf-connecting-ip')
-  const realIp = request.headers.get('x-real-ip')
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = cloudflareIp ?? realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
-
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please wait a moment before submitting again.' },
-      { status: 429 }
-    )
+  if (!sameOrigin(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   let body: Record<string, unknown>
   try {
-    body = await request.json()
+    const parsed: unknown = await request.json()
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error()
+    body = parsed as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    return NextResponse.json({ error: 'Enter valid order details.' }, { status: 400 })
   }
 
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-    return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 })
+  const submitted = parseSubmittedLines(body.items)
+  if (!submitted) {
+    return NextResponse.json({ error: 'Your cart is empty or invalid.' }, { status: 400 })
   }
-
-  // Validate all fields
-  const errors = validateOrderBody(body)
-  if (errors.length > 0) {
-    // Return only the first error message to avoid leaking internals
-    return NextResponse.json(
-      { error: errors[0].message },
-      { status: 400 }
-    )
-  }
-
-  // Extract user_id from the authenticated session (not from the request body).
-  // createServiceClient() bypasses RLS, so we must resolve the real user ourselves
-  // to prevent callers from associating orders with arbitrary account IDs.
-  const userClient = await createClient()
-  const { data: { user: sessionUser }, error: authError } = await userClient.auth.getUser()
-  if (authError || !sessionUser?.id || !sessionUser.email) {
-    return NextResponse.json({ error: 'Sign in to place an order.' }, { status: 401 })
-  }
-  const authenticatedUserId = sessionUser.id
-
-  // In mock mode, return a fake order ID
-  if (isSupabaseMockMode()) {
-    const orderNumber = mockOrderNumber(sessionUser.email)
-    return NextResponse.json({ id: `mock-order-${orderNumber}`, order_number: orderNumber })
-  }
-
-  // ─── Server-side pricing ────────────────────────────────────────────────────
-  // Prices are re-derived from the products table and the submitted ones are
-  // discarded. Without this, a caller could post the real cart with forged line
-  // prices and a matching forged subtotal, and the driver would collect the
-  // forged amount in cash. The client is trusted for WHAT and HOW MANY, never
-  // for HOW MUCH.
-  const submitted = (body.items as OrderItem[]).map(i => ({
-    product_id: String(i.product_id).trim(),
-    size: i.size ? String(i.size).trim() : null,
-    qty: Math.floor(Number(i.qty)),
-  }))
-
-  const svc = await createServiceClient()
-  const { data: catalog, error: catalogError } = await svc
-    .from('products')
-    .select('id, name, price, sizes, is_active, category_id')
-    .in('id', [...new Set(submitted.map(i => i.product_id))])
-
-  if (catalogError) {
-    return NextResponse.json(
-      { error: 'We could not price that order. Please try again.' },
-      { status: 503 },
-    )
-  }
-
-  const now = new Date().toISOString()
-  const { data: promotionRows, error: promotionError } = await svc
-    .from('promotions')
-    .select('id, name, description, campaign_type, scope, category_id, discount_percent, starts_at, ends_at, is_active')
-    .eq('is_active', true)
-    .lte('starts_at', now)
-    .or(`ends_at.is.null,ends_at.gt.${now}`)
-
-  // Keep checkout working during the migration rollout, but never silently
-  // ignore an ordinary promotion-service failure that could overcharge someone.
-  if (promotionError && promotionError.code !== '42P01') {
-    return NextResponse.json(
-      { error: 'We could not confirm current discounts. Please try again.' },
-      { status: 503 },
-    )
-  }
-
-  const pricedCatalog = applyPromotions(
-    catalog ?? [],
-    (promotionRows ?? []) as Promotion[],
-  )
-  const byId = new Map(pricedCatalog.map(p => [p.id, p]))
-
-  const items: OrderItem[] = []
-  for (const line of submitted) {
-    const product = byId.get(line.product_id)
-    // Fail closed: an unknown or withdrawn product must not become a $0 line.
-    if (!product || product.is_active === false) {
-      return NextResponse.json(
-        { error: 'One of those pieces is no longer available. Please refresh and try again.' },
-        { status: 409 },
-      )
-    }
-    if (product.price == null || !Number.isFinite(Number(product.price)) || Number(product.price) < 0) {
-      return NextResponse.json(
-        { error: 'One of those pieces is not available to order online yet.' },
-        { status: 409 },
-      )
-    }
-
-    const allowedSizes = Array.isArray(product.sizes)
-      ? product.sizes.map((size: unknown) => String(size).trim()).filter(Boolean)
-      : []
-    if (allowedSizes.length > 0 && (!line.size || !allowedSizes.includes(line.size))) {
-      return NextResponse.json(
-        { error: 'One of the selected sizes is no longer available. Please choose again.' },
-        { status: 409 },
-      )
-    }
-    if (allowedSizes.length === 0 && line.size !== null) {
-      return NextResponse.json(
-        { error: 'That piece does not use a size selection. Please refresh and try again.' },
-        { status: 409 },
-      )
-    }
-    const promotionPrice = product as typeof product & PromotionPrice
-    items.push({
-      product_id: product.id,
-      name: String(product.name),
-      size: line.size,
-      qty: line.qty,
-      price: Number(product.price),
-      ...(promotionPrice.original_price != null
-        ? {
-            original_price: Number(promotionPrice.original_price),
-            discount_percent: Number(promotionPrice.discount_percent),
-            promotion_name: String(promotionPrice.promotion_name),
-          }
-        : {}),
-    })
-  }
-
-  const subtotal = Number(
-    items.reduce((sum, i) => sum + i.price * i.qty, 0).toFixed(2),
-  )
-  const deliveryFee = 4
-  const total = Number((subtotal + deliveryFee).toFixed(2))
 
   try {
-    const { data, error } = await svc
-      .from('orders')
-      .insert({
-        user_id: authenticatedUserId,
-        // Taken from the verified session, never from the request body: a customer
-        // could otherwise stamp another person's address on her own order.
-        user_email: sessionUser.email.trim().toLowerCase(),
-        full_name: String(body.full_name).trim(),
-        phone: String(body.phone).trim(),
-        delivery_address: String(body.delivery_address).trim(),
-        city: body.city ? String(body.city).trim() : null,
-        area: body.area,
-        delivery_fee: deliveryFee,
-        order_notes: body.order_notes ? String(body.order_notes).trim() : null,
-        items,
-        subtotal,
-        total,
-        status: 'pending',
-      })
-      .select('*')
-      .single()
+    const [auth, db, env] = await Promise.all([getAuth(), getD1Database(), getCloudflareEnv()])
+    if (!db || !env) throw new Error('bindings-unavailable')
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Sign in to place an order.' }, { status: 401 })
+    }
 
-    if (error) {
-      // Log internally but never expose DB error details to the client
-      console.error('Order insert error:', error)
-      return NextResponse.json({ error: 'Failed to save order. Please try again.' }, { status: 500 })
+    const address = await deliveryDetails(db, session.user.id, body)
+    if (!address) {
+      return NextResponse.json(
+        { error: 'Choose a valid saved Lebanese address or complete every delivery field.' },
+        { status: 400 },
+      )
+    }
+
+    const now = new Date().toISOString()
+    const [catalogResults, promotions, settings] = await Promise.all([
+      db.batch<CatalogRow>(submitted.map((line) => db.prepare(
+        `SELECT p.id, p.name, p.price_cents, p.sizes_json, p.category_id, p.is_active,
+                v.id AS variant_id, v.sku, v.size AS variant_size,
+                v.stock_quantity, v.is_active AS variant_active,
+                c.name AS color_name, c.hex_code,
+                EXISTS(SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id) AS inventory_tracked
+         FROM products p
+         LEFT JOIN product_variants v ON v.id = ? AND v.product_id = p.id
+         LEFT JOIN product_colors c ON c.id = v.color_id
+         WHERE p.id = ?`,
+      ).bind(line.variant_id, line.product_id))),
+      db.prepare(
+        `SELECT name, scope, category_id, discount_basis_points
+         FROM promotions
+         WHERE is_active = 1 AND campaign_type = 'discount'
+           AND starts_at <= ? AND (ends_at IS NULL OR ends_at > ?)`,
+      ).bind(now, now).all<PromotionRow>(),
+      db.prepare(
+        `SELECT delivery_fee_cents, cash_on_delivery
+         FROM site_settings WHERE id = 'storefront'`,
+      ).first<{ delivery_fee_cents: number; cash_on_delivery: number }>(),
+    ])
+
+    if (!settings || settings.cash_on_delivery !== 1) {
+      return NextResponse.json({ error: 'Checkout is temporarily unavailable.' }, { status: 503 })
+    }
+
+    const priced = submitted.map((line, index) => {
+      const product = catalogResults[index]?.results[0]
+      if (!product || product.is_active !== 1 || product.price_cents == null) {
+        throw new Error('PRODUCT_UNAVAILABLE')
+      }
+      const sizes = JSON.parse(product.sizes_json || '[]') as unknown
+      const allowedSizes = Array.isArray(sizes) ? sizes.map(String) : []
+      if (allowedSizes.length && (!line.size || !allowedSizes.includes(line.size))) {
+        throw new Error('SIZE_UNAVAILABLE')
+      }
+      if (product.inventory_tracked === 1) {
+        if (
+          !line.variant_id ||
+          !product.variant_id ||
+          product.variant_active !== 1 ||
+          (product.variant_size ?? null) !== line.size ||
+          (product.stock_quantity !== null && product.stock_quantity < line.qty)
+        ) throw new Error('VARIANT_UNAVAILABLE')
+      } else if (line.variant_id) {
+        throw new Error('VARIANT_UNAVAILABLE')
+      }
+
+      const applicable = promotions.results.filter((promotion) =>
+        promotion.scope === 'sitewide' || promotion.category_id === product.category_id,
+      )
+      const promotion = applicable.sort(
+        (a, b) => b.discount_basis_points - a.discount_basis_points,
+      )[0]
+      const discountBasisPoints = promotion?.discount_basis_points ?? 0
+      const unitPriceCents = Math.round(product.price_cents * (10_000 - discountBasisPoints) / 10_000)
+      return {
+        ...line,
+        productName: product.name,
+        sku: product.sku,
+        colorName: product.color_name,
+        colorHex: product.color_hex,
+        unitPriceCents,
+        discountCents: product.price_cents - unitPriceCents,
+        lineTotalCents: unitPriceCents * line.qty,
+        promotionName: promotion?.name ?? null,
+      }
+    })
+
+    const subtotalCents = priced.reduce((sum, line) => sum + line.lineTotalCents, 0)
+    const discountCents = priced.reduce((sum, line) => sum + line.discountCents * line.qty, 0)
+    const totalCents = subtotalCents + settings.delivery_fee_cents
+    const orderNotes = nullableText(body.order_notes, 500)
+
+    let createdNumber = ''
+    let createdId = ''
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      createdNumber = orderNumber()
+      createdId = crypto.randomUUID()
+      const trackingTokenHash = await randomHash()
+      const outboxId = crypto.randomUUID()
+      const statements: D1PreparedStatement[] = [
+        db.prepare(
+          `INSERT INTO orders (
+             id, order_number, tracking_token_hash, user_id, status, user_email,
+             recipient_name, phone_e164, country_code, governorate, city, area,
+             street, building, floor, landmark, delivery_notes, order_notes,
+             currency, subtotal_cents, discount_cents, delivery_fee_cents, total_cents,
+             created_at, updated_at
+           ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, 'LB', ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                     'USD', ?, ?, ?, ?, ?, ?)`,
+        ).bind(
+          createdId, createdNumber, trackingTokenHash, session.user.id,
+          session.user.email.toLowerCase(), address.recipientName, address.phoneE164,
+          address.governorate, address.city, address.area, address.street,
+          address.building, address.floor, address.landmark, address.deliveryNotes,
+          orderNotes, subtotalCents, discountCents, settings.delivery_fee_cents,
+          totalCents, now, now,
+        ),
+        ...priced.map((line) => db.prepare(
+          `INSERT INTO order_items (
+             id, order_id, product_id, variant_id, product_name, sku, size,
+             color_name, color_hex, quantity, unit_price_cents, discount_cents,
+             line_total_cents, promotion_name, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).bind(
+          crypto.randomUUID(), createdId, line.product_id, line.variant_id,
+          line.productName, line.sku, line.size, line.colorName, line.colorHex,
+          line.qty, line.unitPriceCents, line.discountCents * line.qty,
+          line.lineTotalCents, line.promotionName, now,
+        )),
+        db.prepare(
+          `INSERT INTO order_status_history
+             (id, order_id, previous_status, status, actor_user_id, public_note, created_at)
+           VALUES (?, ?, NULL, 'pending', ?, 'Order received and awaiting confirmation.', ?)`,
+        ).bind(crypto.randomUUID(), createdId, session.user.id, now),
+        db.prepare(
+          `INSERT INTO notification_outbox
+             (id, idempotency_key, order_id, channel, template, recipient, payload_json,
+              status, available_at, created_at, updated_at)
+           VALUES (?, ?, ?, 'email', 'order-received', ?, ?, 'pending', ?, ?, ?)`,
+        ).bind(
+          outboxId, `order-received:${createdId}`, createdId, session.user.email.toLowerCase(),
+          JSON.stringify({ orderNumber: createdNumber, totalCents, whatsapp: '+96181492994' }),
+          now, now, now,
+        ),
+        db.prepare(
+          `INSERT INTO customer_profiles (user_id, default_phone_e164, created_at, updated_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             default_phone_e164 = excluded.default_phone_e164,
+             updated_at = excluded.updated_at`,
+        ).bind(session.user.id, address.phoneE164, now, now),
+      ]
+
+      try {
+        await db.batch(statements)
+        await enqueueEmail(env, {
+          idempotencyKey: `order-received:${createdId}`,
+          template: 'order-received',
+          recipient: session.user.email.toLowerCase(),
+          payload: {
+            orderNumber: createdNumber,
+            totalCents,
+            whatsapp: '+96181492994',
+          },
+        }).then(
+          () => db.prepare(
+            `UPDATE notification_outbox SET status = 'queued', updated_at = ?
+             WHERE idempotency_key = ?`,
+          ).bind(new Date().toISOString(), `order-received:${createdId}`).run(),
+          (error) => console.error('Order email enqueue failed', error),
+        )
+        break
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message.includes('order_number') && message.includes('UNIQUE') && attempt < 2) continue
+        if (message.includes('VARIANT_UNAVAILABLE')) {
+          return NextResponse.json(
+            { error: 'An item just sold out. Review your cart and try again.' },
+            { status: 409 },
+          )
+        }
+        throw error
+      }
     }
 
     return NextResponse.json({
-      id: data.id,
-      order_number: typeof data.order_number === 'string' ? data.order_number : null,
-      items,
-      subtotal,
-      total,
-      delivery_fee: deliveryFee,
+      id: createdId,
+      order_number: createdNumber,
+      status: 'pending',
+      items: priced.map((line) => ({
+        product_id: line.product_id,
+        name: line.productName,
+        size: line.size,
+        color_name: line.colorName,
+        qty: line.qty,
+        price: line.unitPriceCents / 100,
+      })),
+      subtotal: subtotalCents / 100,
+      delivery_fee: settings.delivery_fee_cents / 100,
+      total: totalCents / 100,
+      whatsapp: '+96181492994',
     })
-  } catch (err) {
-    console.error('Order API unexpected error:', err)
-    return NextResponse.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (['PRODUCT_UNAVAILABLE', 'SIZE_UNAVAILABLE', 'VARIANT_UNAVAILABLE'].includes(message)) {
+      return NextResponse.json(
+        { error: 'One of those items is no longer available. Refresh and try again.' },
+        { status: 409 },
+      )
+    }
+    console.error('Order creation failed', error)
+    return NextResponse.json({ error: 'We could not place the order. Please try again.' }, { status: 503 })
   }
 }

@@ -1,6 +1,11 @@
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { authorizeAdminRequest } from '@/lib/admin-api'
+import {
+  deletePromotion,
+  PromotionMutationError,
+  updatePromotion,
+} from '@/lib/admin-promotions-d1'
 import { validatePromotionInput } from '@/lib/promotion-input'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -26,36 +31,29 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
   const parsed = validatePromotionInput(body)
-  if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 })
+  if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-  const { data: before, error: readError } = await auth.supabase
-    .from('promotions').select('*').eq('id', id).single()
-  if (readError || !before) return NextResponse.json({ error: 'Event not found.' }, { status: 404 })
+  try {
+    const promotion = await updatePromotion(
+      auth.db,
+      id,
+      parsed.value,
+      auth.user,
+      request.headers.get('cf-ray') ?? request.headers.get('x-request-id'),
+    )
 
-  const { data, error } = await auth.supabase
-    .from('promotions').update(parsed.value).eq('id', id).select('*').single()
-  if (error) {
+    refreshStorefront()
+    return NextResponse.json({ promotion })
+  } catch (error) {
+    if (error instanceof PromotionMutationError && error.code === 'NOT_FOUND') {
+      return NextResponse.json({ error: 'Event not found.' }, { status: 404 })
+    }
+    if (error instanceof PromotionMutationError && error.code === 'CATEGORY_NOT_FOUND') {
+      return NextResponse.json({ error: 'Choose an active category for this discount.' }, { status: 400 })
+    }
     console.error('Promotion update failed:', error)
     return NextResponse.json({ error: 'Could not update that event.' }, { status: 500 })
   }
-
-  const { error: auditError } = await auth.supabase.from('admin_logs').insert({
-    admin_email: auth.user.email ?? 'unknown',
-    action: 'UPDATE',
-    entity_type: 'promotion',
-    entity_id: data.id,
-    entity_name: data.name,
-    changes: { before, after: data },
-  })
-  if (auditError) console.error('Promotion audit insert failed:', auditError)
-
-  refreshStorefront()
-  return NextResponse.json({
-    promotion: data,
-    ...(auditError
-      ? { warning: 'The campaign was updated, but its audit entry failed. Please contact support.' }
-      : {}),
-  })
 }
 
 export async function DELETE(
@@ -67,31 +65,21 @@ export async function DELETE(
   const { id } = await params
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid event ID.' }, { status: 400 })
 
-  const { data: before, error: readError } = await auth.supabase
-    .from('promotions').select('*').eq('id', id).single()
-  if (readError || !before) return NextResponse.json({ error: 'Event not found.' }, { status: 404 })
+  try {
+    await deletePromotion(
+      auth.db,
+      id,
+      auth.user,
+      request.headers.get('cf-ray') ?? request.headers.get('x-request-id'),
+    )
 
-  const { error } = await auth.supabase.from('promotions').delete().eq('id', id)
-  if (error) {
+    refreshStorefront()
+    return NextResponse.json({ deleted: true })
+  } catch (error) {
+    if (error instanceof PromotionMutationError && error.code === 'NOT_FOUND') {
+      return NextResponse.json({ error: 'Event not found.' }, { status: 404 })
+    }
     console.error('Promotion delete failed:', error)
     return NextResponse.json({ error: 'Could not delete that event.' }, { status: 500 })
   }
-
-  const { error: auditError } = await auth.supabase.from('admin_logs').insert({
-    admin_email: auth.user.email ?? 'unknown',
-    action: 'DELETE',
-    entity_type: 'promotion',
-    entity_id: before.id,
-    entity_name: before.name,
-    changes: { before, after: null },
-  })
-  if (auditError) console.error('Promotion audit insert failed:', auditError)
-
-  refreshStorefront()
-  return NextResponse.json({
-    deleted: true,
-    ...(auditError
-      ? { warning: 'The campaign was deleted, but its audit entry failed. Please contact support.' }
-      : {}),
-  })
 }

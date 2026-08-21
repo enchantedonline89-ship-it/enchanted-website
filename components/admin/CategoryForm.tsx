@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Category } from '@/types'
+import type { Category, SizeSystem } from '@/types'
 import { slugify } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
+import { adminCatalogRequest } from '@/lib/admin-catalog-client'
 import ImageUpload from './ImageUpload'
 
 interface Props { category?: Category; mode: 'create' | 'edit' }
@@ -16,6 +16,7 @@ export default function CategoryForm({ category, mode }: Props) {
     name: category?.name ?? '',
     description: category?.description ?? '',
     image_url: category?.image_url ?? '',
+    size_system: category?.size_system ?? 'none' as SizeSystem,
     sort_order: category?.sort_order ?? 0,
     is_active: category?.is_active ?? true,
   })
@@ -29,50 +30,22 @@ export default function CategoryForm({ category, mode }: Props) {
     setError(null)
 
     try {
-      const supabase = createClient()
       const payload = {
         name: form.name.trim(),
-        slug: slugify(form.name),
         description: form.description.trim() || null,
         image_url: form.image_url || null,
+        size_system: form.size_system,
         sort_order: form.sort_order,
         is_active: form.is_active,
       }
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('SESSION_EXPIRED')
-
-      if (mode === 'create') {
-        const { data, error: dbError } = await supabase.from('categories').insert(payload).select().single()
-        if (dbError) throw dbError
-        const { error: logError } = await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'CREATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before: null, after: data } })
-        if (logError) throw new Error('AUDIT_LOG_FAILED')
-      } else {
-        const { data: before, error: beforeError } = await supabase.from('categories').select().eq('id', category!.id).single()
-        if (beforeError) throw beforeError
-        const { data, error: dbError } = await supabase.from('categories').update(payload).eq('id', category!.id).select().single()
-        if (dbError) throw dbError
-        const { error: logError } = await supabase.from('admin_logs').insert({ admin_email: user.email ?? 'unknown', action: 'UPDATE', entity_type: 'category', entity_id: data.id, entity_name: data.name, changes: { before, after: data } })
-        if (logError) throw new Error('AUDIT_LOG_FAILED')
-      }
-
-      const revalidateResponse = await fetch('/api/revalidate', { method: 'POST' })
-      if (!revalidateResponse.ok) throw new Error('REVALIDATION_FAILED')
+      await adminCatalogRequest(mode === 'create' ? '/api/admin/categories' : `/api/admin/categories/${category!.id}`, {
+        method: mode === 'create' ? 'POST' : 'PATCH',
+        body: JSON.stringify(payload),
+      })
       router.push('/admin/categories')
       router.refresh()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'unknown'
-      if (msg === 'SESSION_EXPIRED') {
-        setError('Your session has expired. Please sign in again.')
-      } else if (msg === 'AUDIT_LOG_FAILED') {
-        setError('The category was saved, but its audit entry failed. Please contact support.')
-      } else if (msg === 'REVALIDATION_FAILED') {
-        setError('The category was saved, but the storefront refresh failed. Refresh it manually.')
-      } else if (msg.includes('duplicate key') || msg.includes('unique')) {
-        setError('A category with this name or slug already exists.')
-      } else {
-        setError(`Save failed: ${msg}`)
-      }
+      setError(err instanceof Error ? err.message : 'The category could not be saved.')
     } finally {
       setSaving(false)
     }
@@ -97,6 +70,16 @@ export default function CategoryForm({ category, mode }: Props) {
       </div>
 
       <ImageUpload value={form.image_url} onChange={url => set('image_url', url)} label="Category Image" />
+
+      <div>
+        <label htmlFor="category-size-system" className={labelClass}>Size system</label>
+        <select id="category-size-system" value={form.size_system} onChange={e => set('size_system', e.target.value as SizeSystem)} className={inputClass}>
+          <option value="none">No standard sizes</option>
+          <option value="letter_clothing">Clothing (XS–XXL)</option>
+          <option value="eu_footwear">Footwear (EU)</option>
+        </select>
+        <p className="mt-1 text-xs text-ink-dim">Controls the size choices available to products in this category.</p>
+      </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div>

@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ProductCard from '@/components/public/ProductCard'
-import { makeAccessory, makeSizedProduct } from '../helpers/factories'
+import { makeAccessory, makeColorProduct, makeSizedProduct } from '../helpers/factories'
 import { readCart, withCart } from '../helpers/cart-harness'
 import type { Product } from '@/types'
 
@@ -104,6 +104,64 @@ describe('ProductCard — sized product size gating', () => {
 
     expect(readCart().lines).toEqual([{ id: 'p-twice', size: '38', qty: 2 }])
     expect(readCart().total).toBe(2)
+  })
+})
+
+describe('ProductCard — color and variant stock', () => {
+  it('exposes named hex swatches and requires a color before showing its sizes', async () => {
+    const user = userEvent.setup()
+    renderCard(makeColorProduct())
+
+    expect(
+      screen.getByRole('button', { name: /select ruby red \(#b2182b\)/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /select midnight blue \(#14213d\)/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /choose a size/i })).toBeNull()
+
+    await user.click(addButton())
+    expect(screen.getByRole('alert')).toHaveTextContent(/pick a color first/i)
+  })
+
+  it('filters sizes by color, disables sold-out variants, and persists the variant', async () => {
+    const user = userEvent.setup()
+    renderCard(makeColorProduct())
+
+    await user.click(screen.getByRole('button', { name: /select ruby red/i }))
+
+    expect(screen.getByRole('button', { name: '36' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /37, out of stock/i })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: '38' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '36' }))
+    await user.click(addButton())
+
+    expect(readCart().lines).toEqual([{
+      id: 'p-color',
+      size: '36',
+      qty: 1,
+      colorId: 'color-red',
+      colorName: 'Ruby Red',
+      variantId: 'variant-red-36',
+    }])
+  })
+
+  it('prevents adding when the selected color has no stock', async () => {
+    const user = userEvent.setup()
+    const product = makeColorProduct({
+      variants: makeColorProduct().variants?.map((variant) =>
+        variant.color_id === 'color-red'
+          ? { ...variant, stock_quantity: 0, in_stock: false }
+          : variant,
+      ),
+    })
+    renderCard(product)
+
+    await user.click(screen.getByRole('button', { name: /select ruby red/i }))
+
+    expect(screen.getByRole('button', { name: /^out of stock$/i })).toBeDisabled()
+    expect(readCart().lines).toEqual([])
   })
 })
 

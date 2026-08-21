@@ -1,24 +1,23 @@
-import { createClient } from '@/lib/supabase/server'
-import { Product } from '@/types'
 import { formatPrice, formatDate } from '@/lib/utils'
 import DeleteProductButton from './DeleteProductButton'
+import { requireAdmin } from '@/lib/auth/server'
+import { getD1Database } from '@/lib/cloudflare/d1'
+import { listAdminProducts } from '@/lib/admin-catalog'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ProductsPage() {
-  const supabase = await createClient()
-  const { data: products } = await supabase
-    .from('products')
-    .select('*, category:categories(name, slug)')
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false })
+  await requireAdmin()
+  const db = await getD1Database()
+  if (!db) throw new Error('Catalog database is unavailable.')
+  const products = await listAdminProducts(db)
 
   return (
     <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-8">
         <div>
           <h1 className="text-3xl text-ink">Products</h1>
-          <p className="text-ink-dim text-sm mt-1">{products?.length ?? 0} total products</p>
+          <p className="text-ink-dim text-sm mt-1">{products.length} total products</p>
         </div>
         <a href="/admin/products/new" className="btn btn-primary">
           + Add Product
@@ -36,7 +35,7 @@ export default async function ProductsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {(products ?? []).map((p: Product) => (
+            {products.map(p => (
               <tr key={p.id} className="hover:bg-ink/[0.04] transition-colors">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -65,14 +64,14 @@ export default async function ProductsPage() {
                     <a href={`/admin/products/${p.id}/edit`} className="text-ink-dim hover:text-ink text-xs px-3 py-1.5 border border-line hover:border-ink/30 transition-colors">
                       Edit
                     </a>
-                    <DeleteProductButton id={p.id} name={p.name} />
+                    {p.is_active && <DeleteProductButton id={p.id} name={p.name} />}
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {(!products || products.length === 0) && (
+        {products.length === 0 && (
           <p className="text-center text-ink-dim py-16">No products yet. <a href="/admin/products/new" className="text-ink hover:underline">Add your first product</a></p>
         )}
         </div>

@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { authorizeAdminRequest } from '@/lib/admin-api'
+import { createPromotion, PromotionMutationError } from '@/lib/admin-promotions-d1'
 import { validatePromotionInput } from '@/lib/promotion-input'
 
 export async function POST(request: NextRequest) {
@@ -14,34 +15,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
   const parsed = validatePromotionInput(body)
-  if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 })
+  if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
-  const { data, error } = await auth.supabase
-    .from('promotions')
-    .insert(parsed.value)
-    .select('*')
-    .single()
-  if (error) {
+  try {
+    const promotion = await createPromotion(
+      auth.db,
+      parsed.value,
+      auth.user,
+      request.headers.get('cf-ray') ?? request.headers.get('x-request-id'),
+    )
+
+    revalidatePath('/', 'layout')
+    revalidatePath('/product/[slug]', 'page')
+    return NextResponse.json({ promotion }, { status: 201 })
+  } catch (error) {
+    if (error instanceof PromotionMutationError && error.code === 'CATEGORY_NOT_FOUND') {
+      return NextResponse.json({ error: 'Choose an active category for this discount.' }, { status: 400 })
+    }
     console.error('Promotion insert failed:', error)
     return NextResponse.json({ error: 'Could not create that event.' }, { status: 500 })
   }
-
-  const { error: auditError } = await auth.supabase.from('admin_logs').insert({
-    admin_email: auth.user.email ?? 'unknown',
-    action: 'CREATE',
-    entity_type: 'promotion',
-    entity_id: data.id,
-    entity_name: data.name,
-    changes: { before: null, after: data },
-  })
-  if (auditError) console.error('Promotion audit insert failed:', auditError)
-
-  revalidatePath('/', 'layout')
-  revalidatePath('/product/[slug]', 'page')
-  return NextResponse.json({
-    promotion: data,
-    ...(auditError
-      ? { warning: 'The campaign was created, but its audit entry failed. Please contact support.' }
-      : {}),
-  }, { status: 201 })
 }

@@ -1,18 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
 import PromotionManager from './PromotionManager'
-import type { Promotion } from '@/lib/promotions'
+import { getAdminPromotionsData } from '@/lib/admin-promotions-d1'
+import { getD1Database } from '@/lib/cloudflare/d1'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PromotionsPage() {
-  const supabase = await createClient()
-  const [{ data: promotions, error }, { data: categories }] = await Promise.all([
-    supabase
-      .from('promotions')
-      .select('*, category:categories(id, name)')
-      .order('starts_at', { ascending: false }),
-    supabase.from('categories').select('id, name').order('sort_order'),
-  ])
+  const db = await getD1Database()
+  let data: Awaited<ReturnType<typeof getAdminPromotionsData>> | null = null
+  if (db) {
+    try {
+      data = await getAdminPromotionsData(db)
+    } catch (error) {
+      console.error('Promotion list failed:', error)
+    }
+  }
 
   return (
     <div className="p-4 sm:p-8">
@@ -25,15 +26,14 @@ export default async function PromotionsPage() {
         </p>
       </div>
 
-      {error ? (
+      {!data ? (
         <div className="border border-signal-warn/40 bg-signal-warn/10 px-4 py-3 text-sm text-ink">
-          Promotions are not available yet. Run <code>supabase/promotions-events-migration.sql</code>
-          {' '}in the Supabase SQL editor, then refresh this page.
+          Promotions are temporarily unavailable. Refresh the page or try again shortly.
         </div>
       ) : (
         <PromotionManager
-          initialPromotions={(promotions ?? []) as Promotion[]}
-          categories={categories ?? []}
+          initialPromotions={data.promotions}
+          categories={data.categories}
         />
       )}
     </div>
