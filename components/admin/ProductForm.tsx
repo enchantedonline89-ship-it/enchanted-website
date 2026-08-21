@@ -142,7 +142,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
       {error && (
-        <div className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>
+        <div role="alert" className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>
       )}
 
       {/* Name */}
@@ -158,7 +158,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       </div>
 
       {/* Category + Price */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="product-category" className={labelClass}>Category</label>
           <select id="product-category" value={form.category_id} onChange={e => set('category_id', e.target.value)} className={inputClass + ' cursor-pointer'}>
@@ -225,7 +225,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
       </div>
 
       {/* Toggles */}
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
         {[
           { key: 'is_featured', label: 'Featured Product' },
           { key: 'is_active', label: 'Active (visible)' },

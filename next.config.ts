@@ -1,5 +1,6 @@
 import type { NextConfig } from "next"
 import { withSentryConfig } from "@sentry/nextjs"
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -149,3 +150,5 @@ export default withSentryConfig(nextConfig, {
   // output, so stack traces are readable without publishing the source.
   sourcemaps: { deleteSourcemapsAfterUpload: true },
 })
+
+initOpenNextCloudflareForDev()

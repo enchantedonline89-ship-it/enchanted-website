@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic'
 /**
  * Server-side authorization gate for every admin page.
  *
- * proxy.ts already checks this at the edge, but until now that was the ONLY
+ * middleware.ts already checks this at the edge, but until now that was the ONLY
  * check: this layout was a client component with no verification, and the pages
  * beneath it fetch every order, including customer names, phone numbers and
  * delivery addresses. A middleware bypass, or a misconfigured
- * NEXT_PUBLIC_SUPABASE_URL putting the proxy into mock mode, would have served
+ * NEXT_PUBLIC_SUPABASE_URL putting the middleware into mock mode, would have served
  * that table to an anonymous visitor.
  *
  * Defence in depth: nothing below can render unless this passes, whatever

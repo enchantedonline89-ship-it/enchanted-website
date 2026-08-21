@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { X, Warning } from "@phosphor-icons/react/ssr"
 import { useAuth } from "@/lib/auth-context"
 import { useOverlay } from "@/lib/use-overlay"
@@ -15,6 +16,7 @@ export default function DeleteAccountModal({
   onClose: () => void
 }) {
   const { signOut } = useAuth()
+  const router = useRouter()
   const [step, setStep] = useState<1 | 2>(1)
   const [typed, setTyped] = useState("")
   const [busy, setBusy] = useState(false)
@@ -35,10 +37,6 @@ export default function DeleteAccountModal({
     }
   }
 
-  useEffect(() => {
-    if (!open) return
-  }, [open])
-
   async function handleDelete() {
     if (typed !== CONFIRM_WORD) return
     setBusy(true)
@@ -52,7 +50,8 @@ export default function DeleteAccountModal({
         return
       }
       await signOut()
-      window.location.href = "/"
+      router.replace("/")
+      router.refresh()
     } catch {
       setError("Network error. Check your connection and try again.")
       setBusy(false)

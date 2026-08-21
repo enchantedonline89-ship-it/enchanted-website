@@ -71,6 +71,7 @@ export default function PromotionManager({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
   const sorted = useMemo(
     () => [...initialPromotions].sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at)),
@@ -95,6 +96,7 @@ export default function PromotionManager({
       is_active: promotion.is_active,
     })
     setError(null)
+    setWarning(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -108,6 +110,7 @@ export default function PromotionManager({
     event.preventDefault()
     setSaving(true)
     setError(null)
+    setWarning(null)
 
     const payload = {
       ...form,
@@ -130,6 +133,7 @@ export default function PromotionManager({
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'Could not save that event.')
       reset()
+      setWarning(typeof result.warning === 'string' ? result.warning : null)
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save that event.')
@@ -142,11 +146,13 @@ export default function PromotionManager({
     if (!window.confirm(`Delete “${promotion.name}”? This cannot be undone.`)) return
     setDeletingId(promotion.id)
     setError(null)
+    setWarning(null)
     try {
       const response = await fetch(`/api/admin/promotions/${promotion.id}`, { method: 'DELETE' })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'Could not delete that event.')
       if (editingId === promotion.id) reset()
+      setWarning(typeof result.warning === 'string' ? result.warning : null)
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete that event.')
@@ -158,6 +164,7 @@ export default function PromotionManager({
   async function toggle(promotion: Promotion) {
     setTogglingId(promotion.id)
     setError(null)
+    setWarning(null)
     try {
       const response = await fetch(`/api/admin/promotions/${promotion.id}`, {
         method: 'PATCH',
@@ -176,6 +183,7 @@ export default function PromotionManager({
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'Could not change that event.')
+      setWarning(typeof result.warning === 'string' ? result.warning : null)
       router.refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not change that event.')
@@ -198,6 +206,7 @@ export default function PromotionManager({
         </div>
 
         {error && <p role="alert" className="mb-5 border border-signal-error/30 bg-signal-error/10 px-3 py-2 text-sm text-signal-error">{error}</p>}
+        {warning && <p role="status" className="mb-5 border border-signal-warn/30 bg-signal-warn/10 px-3 py-2 text-sm text-signal-warn">{warning}</p>}
 
         <div className="space-y-5">
           <div>

@@ -1,13 +1,15 @@
 /**
  * Single source of truth for the site's absolute origin and brand name.
  *
- * A custom domain is planned but not live yet. When it goes live, change
- * ONLY this value. metadataBase in app/layout.tsx reads from here, every
- * page's canonical and Open Graph url is a root-relative path resolved
- * against metadataBase, and app/sitemap.ts, app/robots.ts, and the JSON-LD
- * components import it directly. Nothing else needs rewriting.
+ * The deployment origin is supplied by each host. Keeping the fallback here
+ * preserves existing local/Vercel previews, while Cloudflare can publish
+ * correct canonicals by setting NEXT_PUBLIC_SITE_URL without a code change.
  */
-export const SITE_URL = "https://enchanted-website-xi.vercel.app"
+const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+
+export const SITE_URL = configuredOrigin
+  ? new URL(configuredOrigin).origin
+  : "https://enchanted-website-xi.vercel.app"
 
 export const SITE_NAME = "Enchanted Style"
 

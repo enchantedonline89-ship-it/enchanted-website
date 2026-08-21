@@ -1,4 +1,6 @@
 -- ============================================================
+
+BEGIN;
 -- Product detail page: the fields the PDP needs.
 -- Idempotent, safe to re-run.
 --
@@ -68,3 +70,5 @@ ALTER TABLE products ALTER COLUMN additional_images SET DEFAULT '{}'::text[];
 -- The two UPDATEs match on slug. Confirm they hit six rows between them before
 -- trusting the size-guide routing:
 --   SELECT slug, size_system FROM categories ORDER BY sort_order;
+
+COMMIT;

@@ -5,7 +5,7 @@ import { authorizeAdminRequest } from '@/lib/admin-api'
 
 export async function GET(request: NextRequest) {
   const authorization = await authorizeAdminRequest(request)
-  if ('error' in authorization) return authorization.error
+  if (!authorization.ok) return authorization.error
 
   const service = await createServiceClient()
   const { data, error } = await service.from('order_analytics').select('*').single()

@@ -32,7 +32,7 @@ export default function ContactPage() {
       <PageShell
         title="Contact us"
         standfirst="WhatsApp is the fastest way to reach us. Instagram and email also work."
-        meta="Last updated March 2026"
+        meta="Last updated August 2026"
       >
       <div>
         <section>
@@ -72,10 +72,6 @@ export default function ContactPage() {
           <p>Lebanon</p>
         </section>
 
-        <section>
-          <h2>Business hours</h2>
-          <p>Monday-Saturday, 10am-8pm (Lebanon time)</p>
-        </section>
       </div>
       </PageShell>
     </>

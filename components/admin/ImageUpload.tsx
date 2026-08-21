@@ -32,7 +32,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
 
   return (
     <div className="space-y-2">
-      <label className="t-meta block">{label}</label>
+      <label htmlFor="image-url" className="t-meta block">{label}</label>
 
       {/* Preview */}
       {value && (
@@ -54,6 +54,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
 
       {/* URL input */}
       <input
+        id="image-url"
         type="url"
         value={value}
         onChange={e => {
@@ -101,7 +102,7 @@ export default function ImageUpload({ value, onChange, label = 'Product Image' }
         className="hidden"
       />
 
-      {error && <p className="text-signal-error text-xs">{error}</p>}
+      {error && <p role="alert" className="text-signal-error text-xs">{error}</p>}
     </div>
   )
 }

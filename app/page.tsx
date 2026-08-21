@@ -24,10 +24,20 @@ export default async function HomePage() {
 
   return (
     <>
-      <CatalogItemListJsonLd products={products} />
+      <CatalogItemListJsonLd products={products} live={source === "live"} />
       <Navbar />
 
-      <main id="main">
+      <main id="main" className="pt-[68px]">
+        {source === "mock" && (
+          <aside
+            className="border-b border-signal-warn/30 bg-signal-warn/10 px-5 py-2.5 text-center text-[0.8125rem] text-ink"
+            aria-label="Preview catalog notice"
+          >
+            <strong className="font-medium">Client preview</strong>
+            <span aria-hidden="true"> — </span>
+            Sample products and prices are shown for review only.
+          </aside>
+        )}
         <PromotionBanner promotions={promotions} />
         <Hero visual={<HeroCanvas />} />
         <DeliveryBand />
@@ -60,7 +70,7 @@ export default async function HomePage() {
                 Enchanted Style started as an Instagram feed and turned into a small
                 shop with a clear brief: find the pieces women here actually want to
                 wear out, and get them to the door without a card form standing in the
-                way. Every item is chosen by hand, in sizes that run true.
+                way. Every item is selected for this catalog by the shop.
               </p>
               <p className="t-body mt-5">
                 New arrivals land most weeks. If something sells out in your size,

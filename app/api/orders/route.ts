@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMockMode } from '@/lib/mock-data'
+import { mockOrderNumber } from '@/lib/mock-order'
 import { applyPromotions, type Promotion, type PromotionPrice } from '@/lib/promotions'
 
 // ─── Rate limiting (in-memory, per server instance) ──────────────────────────
 // Limits each IP to MAX_REQUESTS submissions within WINDOW_MS.
-// For production with multiple Vercel instances, upgrade to an edge KV store.
+// This remains best-effort per isolate; use a durable Cloudflare binding when
+// strict cross-isolate enforcement is required.
 const WINDOW_MS = 60_000   // 1 minute
 const MAX_REQUESTS = 5     // max 5 orders per IP per minute
+const MAX_TRACKED_IPS = 5_000
 
 const ipHits = new Map<string, { count: number; resetAt: number }>()
 
@@ -15,20 +18,18 @@ function isRateLimited(ip: string): boolean {
   const now = Date.now()
   const entry = ipHits.get(ip)
   if (!entry || now > entry.resetAt) {
+    if (!entry && ipHits.size >= MAX_TRACKED_IPS) {
+      for (const [key, value] of ipHits) {
+        if (now > value.resetAt) ipHits.delete(key)
+      }
+      if (ipHits.size >= MAX_TRACKED_IPS) return true
+    }
     ipHits.set(ip, { count: 1, resetAt: now + WINDOW_MS })
     return false
   }
   entry.count++
   return entry.count > MAX_REQUESTS
 }
-
-// Periodically clean up expired entries to prevent unbounded memory growth
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, val] of ipHits) {
-    if (now > val.resetAt) ipHits.delete(key)
-  }
-}, 5 * 60_000)
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
 
@@ -173,12 +174,13 @@ function validateOrderBody(body: Record<string, unknown>): ValidationError[] {
 
 export async function POST(request: NextRequest) {
   // Rate limit by IP.
-  // x-real-ip is set by Vercel's edge and cannot be spoofed by the client.
-  // Fall back to the LAST value of x-forwarded-for (appended by Vercel's proxy),
-  // not the first (which is client-supplied and trivially spoofable).
+  // Prefer the address set by Cloudflare's edge. Fall back to common reverse-
+  // proxy headers, taking the final forwarded value rather than a client-
+  // supplied first value.
+  const cloudflareIp = request.headers.get('cf-connecting-ip')
   const realIp = request.headers.get('x-real-ip')
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
+  const ip = cloudflareIp ?? realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
 
   if (isRateLimited(ip)) {
     return NextResponse.json(
@@ -220,7 +222,8 @@ export async function POST(request: NextRequest) {
 
   // In mock mode, return a fake order ID
   if (isSupabaseMockMode()) {
-    return NextResponse.json({ id: 'mock-order-' + Date.now() })
+    const orderNumber = mockOrderNumber(sessionUser.email)
+    return NextResponse.json({ id: `mock-order-${orderNumber}`, order_number: orderNumber })
   }
 
   // ─── Server-side pricing ────────────────────────────────────────────────────

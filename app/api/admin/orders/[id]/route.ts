@@ -1,35 +1,23 @@
-import { NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMockMode } from '@/lib/mock-data'
+import { authorizeAdminRequest } from '@/lib/admin-api'
 
 const VALID_STATUSES = ['pending', 'confirmed', 'delivered', 'cancelled']
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-// The only email allowed to perform admin operations.
-// Set ADMIN_EMAIL in .env.local and Vercel environment variables.
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
-
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
 
   if (isSupabaseMockMode()) {
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ error: 'Changes are disabled in preview mode.' }, { status: 503 })
   }
 
-  // Step 1: Verify authenticated session
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Step 2: Verify the authenticated user is the admin
-  if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const authorization = await authorizeAdminRequest(request)
+  if (!authorization.ok) return authorization.error
 
   let body: { status?: string }
   try {
@@ -42,7 +30,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid status value' }, { status: 400 })
   }
 
-  // Step 3: Reject malformed identifiers before they reach Postgres.
+  // Reject malformed identifiers before they reach Postgres.
   if (!UUID_PATTERN.test(id)) {
     return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 })
   }

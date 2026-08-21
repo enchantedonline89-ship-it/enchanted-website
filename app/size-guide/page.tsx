@@ -32,7 +32,7 @@ export default function SizeGuidePage() {
       <PageShell
         title="Size guide"
         standfirst="Footwear and clothing charts, plus how our sizes actually run."
-        meta="Last updated March 2026"
+        meta="Last updated August 2026"
       >
       <div>
         <section>
@@ -85,7 +85,7 @@ export default function SizeGuidePage() {
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
-            and we&apos;ll tell you exactly what to choose.
+            and we&apos;ll help you choose.
           </p>
         </section>
 

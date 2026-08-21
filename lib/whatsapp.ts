@@ -6,13 +6,14 @@ export const WHATSAPP_PHONE = '96181492994'
 
 /**
  * Absolute origin used when a message needs to carry a shareable link.
- * Kept as a literal rather than imported from components/seo/site.ts: lib must
- * not depend on the component layer, and it must never be derived from
- * window.location, which renders differently on the server and the client and
- * produced a hydration mismatch on every product page.
- * Update alongside SITE_URL when the custom domain goes live.
+ * Kept in the library layer rather than imported from components/seo/site.ts,
+ * and never derived from window.location, so server and client renders agree.
+ * Each deployment provides NEXT_PUBLIC_SITE_URL at build time.
  */
-const SITE_ORIGIN = 'https://enchanted-website-xi.vercel.app'
+const configuredSiteOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+const SITE_ORIGIN = configuredSiteOrigin
+  ? new URL(configuredSiteOrigin).origin
+  : 'https://enchanted-website-xi.vercel.app'
 
 // ─── Order Payload ────────────────────────────────────────────
 

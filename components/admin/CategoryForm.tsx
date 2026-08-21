@@ -83,7 +83,7 @@ export default function CategoryForm({ category, mode }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-      {error && <div className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>}
+      {error && <div role="alert" className="bg-signal-error/10 border border-signal-error/30 text-signal-error text-sm px-4 py-3">{error}</div>}
 
       <div>
         <label htmlFor="category-name" className={labelClass}>Category Name *</label>
@@ -98,7 +98,7 @@ export default function CategoryForm({ category, mode }: Props) {
 
       <ImageUpload value={form.image_url} onChange={url => set('image_url', url)} label="Category Image" />
 
-      <div className="flex gap-4 items-end">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div>
           <label htmlFor="category-sort" className={labelClass}>Sort Order</label>
           <input id="category-sort" type="number" min="0" value={form.sort_order} onChange={e => set('sort_order', parseInt(e.target.value) || 0)} className={inputClass} style={{width: '120px'}} />

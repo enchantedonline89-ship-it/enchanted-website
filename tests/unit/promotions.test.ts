@@ -58,6 +58,35 @@ describe('promotion pricing', () => {
     expect(priced.original_price).toBe(89.99)
     expect(priced.discount_percent).toBe(25)
   })
+
+  it('ignores inactive, future, expired, and other-category discounts', () => {
+    const product = { price: 100, category_id: 'heels' }
+    const now = new Date('2026-08-20T12:00:00.000Z')
+    const excluded: Promotion[] = [
+      { ...activeDiscount, id: 'inactive', is_active: false },
+      { ...activeDiscount, id: 'future', starts_at: '2026-08-21T00:00:00.000Z' },
+      { ...activeDiscount, id: 'expired', ends_at: '2026-08-20T12:00:00.000Z' },
+      { ...activeDiscount, id: 'dresses', scope: 'category', category_id: 'dresses' },
+    ]
+
+    expect(promotionForProduct(product, excluded, now)).toBeNull()
+    expect(applyPromotions([product], excluded, now)[0]).toEqual(product)
+  })
+
+  it('breaks an equal discount tie in favor of the product category', () => {
+    const categoryDiscount: Promotion = {
+      ...activeDiscount,
+      id: 'category-discount',
+      scope: 'category',
+      category_id: 'heels',
+    }
+
+    expect(promotionForProduct(
+      { price: 100, category_id: 'heels' },
+      [activeDiscount, categoryDiscount],
+      new Date('2026-08-20T12:00:00.000Z'),
+    )?.id).toBe('category-discount')
+  })
 })
 
 describe('promotion input validation', () => {
@@ -105,5 +134,16 @@ describe('promotion input validation', () => {
       is_active: true,
     })
     expect(result.error).toContain('no more than 100%')
+  })
+
+  it('rejects an event whose end is not after its start', () => {
+    const result = validatePromotionInput({
+      name: 'One instant event',
+      campaign_type: 'event',
+      starts_at: '2026-08-20T12:00:00.000Z',
+      ends_at: '2026-08-20T12:00:00.000Z',
+    })
+
+    expect(result.error).toBe('End time must be after the start time.')
   })
 })

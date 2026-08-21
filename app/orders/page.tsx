@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: '/orders' },
-  // Auth-gated, customer-specific, and proxy.ts already redirects any
+  // Auth-gated, customer-specific, and middleware.ts already redirects any
   // anonymous request away from this route. noindex is defence in depth
   // in case that redirect behaviour ever changes. follow stays true: the
   // outbound "Browse the catalog" link should still pass through.

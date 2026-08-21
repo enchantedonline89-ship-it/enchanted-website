@@ -19,12 +19,13 @@ import ProductPrice from "@/components/public/ProductPrice"
 export const revalidate = 3600
 
 async function resolve(slug: string) {
-  const { products, categories } = await getCatalog()
+  const catalog = await getCatalog()
+  const { products, categories } = catalog
   const product = findBySlug(products, slug)
   if (!product) return null
   const category =
     product.category ?? categories.find((c) => c.id === product.category_id) ?? null
-  return { product, category, products }
+  return { product, category, products, source: catalog.source }
 }
 
 export async function generateMetadata({
@@ -44,6 +45,7 @@ export async function generateMetadata({
   return {
     title: product.name,
     description,
+    robots: found.source === "live" ? undefined : { index: false, follow: true },
     alternates: { canonical: productHref(product) },
     openGraph: {
       title: product.name,
@@ -68,9 +70,9 @@ export default async function ProductPage({
 }) {
   const { slug } = await params
   const found = await resolve(slug)
-  if (!found) notFound()
+  if (!found) return notFound()
 
-  const { product, category, products } = found
+  const { product, category, products, source } = found
   const sizeSystem: SizeSystem = (category?.size_system as SizeSystem) ?? "none"
 
   // Same category first, topped up from the rest so a strip is never left with
@@ -100,7 +102,7 @@ export default async function ProductPage({
     brand: { "@type": "Brand", name: SITE_NAME },
     ...(product.description ? { description: product.description } : {}),
     image: [product.image_url, ...(product.additional_images ?? [])].filter(Boolean),
-    ...(product.price != null
+    ...(source === "live" && product.price != null
       ? {
           offers: {
             "@type": "Offer",
@@ -118,7 +120,7 @@ export default async function ProductPage({
 
   return (
     <>
-      <JsonLd data={jsonLd} />
+      {source === "live" && <JsonLd data={jsonLd} />}
       <BreadcrumbJsonLd
         items={[
           ...(category ? [{ name: category.name, path: `/#catalog` }] : []),
@@ -128,6 +130,16 @@ export default async function ProductPage({
       <Navbar />
 
       <main id="main" className="pt-[68px]">
+        {source === "mock" && (
+          <aside
+            className="border-b border-signal-warn/30 bg-signal-warn/10 px-5 py-2.5 text-center text-[0.8125rem] text-ink"
+            aria-label="Preview catalog notice"
+          >
+            <strong className="font-medium">Client preview</strong>
+            <span aria-hidden="true"> — </span>
+            This sample product and price are for review only.
+          </aside>
+        )}
         <div className="mx-auto max-w-[1440px] lg:grid lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-14">
           <div className="lg:min-w-0">
             <ProductGallery product={product} />

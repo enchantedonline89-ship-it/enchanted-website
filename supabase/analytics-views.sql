@@ -1,4 +1,6 @@
 -- ============================================================
+
+BEGIN;
 -- ENCHANTED STYLE - live, read-only order analytics
 -- Run in Supabase SQL Editor after orders-migration.sql.
 --
@@ -153,3 +155,5 @@ FROM totals t;
 -- read shop financials.
 REVOKE ALL ON order_analytics FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON order_analytics TO service_role;
+
+COMMIT;

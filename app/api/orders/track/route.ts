@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { isSupabaseMockMode } from '@/lib/mock-data'
+import { matchesMockOrderNumber } from '@/lib/mock-order'
 
 const ORDER_NUMBER = /^ES-\d{4}-\d{6}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 10
+const MAX_TRACKED_IPS = 5_000
 const attempts = new Map<string, { count: number; resetAt: number }>()
 
 function clientIp(request: Request) {
+  const cloudflare = request.headers.get('cf-connecting-ip')?.trim()
+  if (cloudflare) return cloudflare
   const real = request.headers.get('x-real-ip')?.trim()
   if (real) return real
   const forwarded = request.headers.get('x-forwarded-for')
@@ -17,13 +21,14 @@ function clientIp(request: Request) {
 
 function isRateLimited(request: Request) {
   const now = Date.now()
-  if (attempts.size > 5_000) {
+  const key = clientIp(request)
+  const current = attempts.get(key)
+  if (!current && attempts.size >= MAX_TRACKED_IPS) {
     for (const [key, value] of attempts) {
       if (value.resetAt <= now) attempts.delete(key)
     }
+    if (attempts.size >= MAX_TRACKED_IPS) return true
   }
-  const key = clientIp(request)
-  const current = attempts.get(key)
   if (!current || current.resetAt <= now) {
     attempts.set(key, { count: 1, resetAt: now + WINDOW_MS })
     return false
@@ -68,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   if (isSupabaseMockMode()) {
-    if (orderNumber === 'ES-2608-001001' && email === 'demo@enchanted.style') {
+    if (matchesMockOrderNumber(orderNumber, email)) {
       return noStore({
         order: {
           order_number: orderNumber,

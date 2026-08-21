@@ -11,20 +11,21 @@ import { absoluteUrl } from "./site"
  *
  * Deliberately minimal Product nodes: name, image, category, brand only.
  *
- * No offers, no price, no availability. The live backend is unreachable
- * (see PRODUCT.md) and the storefront is rendering a fallback mock catalog,
- * so price and stock cannot be verified as real, current inventory.
- * Emitting Offers/price on placeholder data is exactly the kind of
- * structured-data claim Google issues manual actions for. Revisit this the
- * day a real backend is reconnected.
- *
- * No url per item: there is no dedicated product page to point to, only
- * this shared catalog page, and every item would otherwise carry the
- * identical link.
+ * Offers stay on live product-detail pages. Omitting price and availability
+ * here prevents this summary graph from asserting inventory when a preview is
+ * using the fallback catalog. Every item points to its dedicated product page.
  *
  * No aggregateRating, no review: there are no real reviews.
  */
-export default function CatalogItemListJsonLd({ products }: { products: Product[] }) {
+export default function CatalogItemListJsonLd({
+  products,
+  live,
+}: {
+  products: Product[]
+  live: boolean
+}) {
+  if (!live) return null
+
   const data = {
     "@context": "https://schema.org",
     "@type": "ItemList",

@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-[100dvh] flex-col">
+    <main id="main" className="flex min-h-[100dvh] flex-col">
       <div className="flex h-[68px] shrink-0 items-center border-b border-line px-5 lg:px-10">
         <Logo />
       </div>

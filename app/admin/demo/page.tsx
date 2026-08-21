@@ -6,14 +6,14 @@ import { formatPrice } from '@/lib/utils'
 const demoProducts = mockProducts.slice(0, 8)
 
 const demoOrders = [
-  { number: 'EN-260814-1042', customer: 'Demo Customer', area: 'Beirut', total: 93.99, status: 'Pending' },
-  { number: 'EN-260813-1041', customer: 'Client Preview', area: 'Jounieh', total: 138.99, status: 'Completed' },
-  { number: 'EN-260812-1040', customer: 'Sample Shopper', area: 'Tripoli', total: 72.0, status: 'Shipped' },
+  { number: 'ES-2608-001003', customer: 'Demo Customer', area: 'Beirut', total: 93.99, status: 'Pending' },
+  { number: 'ES-2608-001002', customer: 'Client Preview', area: 'Jounieh', total: 138.99, status: 'Delivered' },
+  { number: 'ES-2608-001001', customer: 'Sample Shopper', area: 'Tripoli', total: 72.0, status: 'Confirmed' },
 ]
 
 const demoEvents = [
-  { name: 'Christmas Edit', dates: 'Dec 1–26', theme: 'Christmas', status: 'Scheduled' },
-  { name: 'Ramadan Collection', dates: 'Feb 17–Mar 19', theme: 'Ramadan', status: 'Draft' },
+  { name: 'Christmas Edit', dates: 'Dec 1–26', message: 'Christmas arrivals are now in the shop.', status: 'Scheduled' },
+  { name: 'Ramadan Collection', dates: 'Feb 17–Mar 19', message: 'Our Ramadan edit is available now.', status: 'Draft' },
 ]
 
 const demoDiscounts = [
@@ -91,7 +91,7 @@ function Dashboard() {
             </div>
             <p className="text-2xl font-semibold">$1,284</p>
           </div>
-          <div className="mt-7 flex h-40 items-end gap-2" aria-label="Demo seven-day sales chart">
+          <div className="mt-7 flex h-40 items-end gap-2" role="img" aria-label="Demo seven-day sales chart">
             {[42, 68, 50, 84, 61, 100, 76].map((height, index) => (
               <div key={index} className="flex flex-1 flex-col items-center gap-2">
                 <div className="w-full bg-gold/70" style={{ height: `${height}%` }} />
@@ -145,11 +145,11 @@ function Categories() {
 function Orders() {
   return (
     <>
-      <PageHeading title="Orders" description="Follow every order from pending to completed with a unique tracking number." />
+      <PageHeading title="Orders" description="Follow every order from pending to delivered with a unique tracking number." />
       <div className="mt-6 overflow-x-auto border border-line bg-paper-raised">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-line text-left text-xs uppercase tracking-wider text-ink-dim"><tr><th className="px-4 py-3">Order number</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Area</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Status</th></tr></thead>
-          <tbody className="divide-y divide-line">{demoOrders.map((order) => <tr key={order.number}><td className="tnum px-4 py-3 font-medium">{order.number}</td><td className="px-4 py-3">{order.customer}</td><td className="px-4 py-3 text-ink-dim">{order.area}</td><td className="tnum px-4 py-3">{formatPrice(order.total)}</td><td className="px-4 py-3"><Status ok={order.status === 'Completed'}>{order.status}</Status></td></tr>)}</tbody>
+          <tbody className="divide-y divide-line">{demoOrders.map((order) => <tr key={order.number}><td className="tnum px-4 py-3 font-medium">{order.number}</td><td className="px-4 py-3">{order.customer}</td><td className="px-4 py-3 text-ink-dim">{order.area}</td><td className="tnum px-4 py-3">{formatPrice(order.total)}</td><td className="px-4 py-3"><Status ok={order.status === 'Delivered'}>{order.status}</Status></td></tr>)}</tbody>
         </table>
       </div>
     </>
@@ -157,12 +157,12 @@ function Orders() {
 }
 
 function Analytics() {
-  const cards = [['Revenue', '$4,860', '+18%'], ['Completed orders', '47', '+12%'], ['Average order', '$103', '+5%'], ['Conversion', '3.8%', '+0.6%']]
+  const cards = [['Revenue', '$4,860', '+18%'], ['Delivered orders', '47', '+12%'], ['Average order', '$103', '+5%'], ['Conversion', '3.8%', '+0.6%']]
   return (
     <>
-      <PageHeading title="Analytics" description="Understand revenue, completed orders, product demand, and promotion performance." />
+      <PageHeading title="Analytics" description="Understand revenue, delivered orders, product demand, and promotion performance." />
       <div className="mt-8 grid grid-cols-2 gap-3 xl:grid-cols-4">{cards.map(([label, value, delta]) => <article key={label} className="border border-line bg-paper-raised p-5"><p className="text-xs uppercase tracking-wider text-ink-dim">{label}</p><p className="mt-2 text-3xl font-semibold">{value}</p><p className="mt-2 text-xs text-signal-ok">{delta} this month</p></article>)}</div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2"><section className="border border-line bg-paper-raised p-5"><h2 className="text-xl">Revenue by category</h2>{[['Heels & Stilettos', 82], ['Dresses', 66], ['Sneakers', 48], ['Accessories', 29]].map(([name, width]) => <div key={name} className="mt-5"><div className="mb-2 flex justify-between text-sm"><span>{name}</span><span className="text-ink-dim">{width}%</span></div><div className="h-2 bg-ink/5"><div className="h-full bg-gold" style={{ width: `${width}%` }} /></div></div>)}</section><section className="border border-line bg-paper-raised p-5"><h2 className="text-xl">Order status</h2><div className="mt-6 grid grid-cols-2 gap-3">{[['Completed', 47], ['Shipped', 12], ['Pending', 8], ['Cancelled', 2]].map(([label, value]) => <div key={label} className="border border-line p-4"><p className="text-sm text-ink-dim">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p></div>)}</div></section></div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2"><section className="border border-line bg-paper-raised p-5"><h2 className="text-xl">Revenue by category</h2>{[['Heels & Stilettos', 82], ['Dresses', 66], ['Sneakers', 48], ['Accessories', 29]].map(([name, width]) => <div key={name} className="mt-5"><div className="mb-2 flex justify-between text-sm"><span>{name}</span><span className="text-ink-dim">{width}%</span></div><div className="h-2 bg-ink/5"><div className="h-full bg-gold" style={{ width: `${width}%` }} /></div></div>)}</section><section className="border border-line bg-paper-raised p-5"><h2 className="text-xl">Order status</h2><div className="mt-6 grid grid-cols-2 gap-3">{[['Delivered', 47], ['Confirmed', 12], ['Pending', 8], ['Cancelled', 2]].map(([label, value]) => <div key={label} className="border border-line p-4"><p className="text-sm text-ink-dim">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p></div>)}</div></section></div>
     </>
   )
 }
@@ -180,9 +180,9 @@ function Discounts() {
 function Events() {
   return (
     <>
-      <PageHeading title="Events" description="Plan seasonal campaigns, storefront messaging, dates, and a matching visual theme." />
+      <PageHeading title="Events" description="Schedule site-wide announcements with clear storefront messaging and dates." />
       <div className="mt-6 flex justify-end"><button disabled className="btn btn-primary opacity-45">+ Add event</button></div>
-      <div className="mt-4 space-y-3">{demoEvents.map((event) => <article key={event.name} className="grid gap-4 border border-line bg-paper-raised p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><h2 className="text-xl">{event.name}</h2><p className="mt-1 text-sm text-ink-dim">{event.dates}</p></div><p className="text-sm">{event.theme} theme</p><Status ok={event.status === 'Scheduled'}>{event.status}</Status></article>)}</div>
+      <div className="mt-4 space-y-3">{demoEvents.map((event) => <article key={event.name} className="grid gap-4 border border-line bg-paper-raised p-5 sm:grid-cols-[1fr_auto] sm:items-center"><div><h2 className="text-xl">{event.name}</h2><p className="mt-1 text-sm text-ink-dim">{event.dates}</p><p className="mt-2 text-sm">{event.message}</p></div><Status ok={event.status === 'Scheduled'}>{event.status}</Status></article>)}</div>
     </>
   )
 }
@@ -209,11 +209,11 @@ export default async function AdminDemoPage({ searchParams }: { searchParams: Pr
     <div className="min-h-[100dvh] bg-paper text-ink">
       <header className="flex h-[68px] items-center justify-between border-b border-line bg-paper-raised px-4 sm:px-8"><Logo size="sm" /><div className="flex items-center gap-3"><span className="hidden border border-signal-warn/40 bg-signal-warn/10 px-2.5 py-1 text-[0.6875rem] uppercase tracking-wider text-ink-dim sm:inline">Read-only demo</span><Link href="/" className="btn btn-ghost min-h-10 px-3 py-2 text-xs">View shop</Link></div></header>
 
-      <nav className="track-scroll overflow-x-auto border-b border-line bg-paper-raised px-4 md:hidden" aria-label="Demo admin sections"><div className="flex min-w-max gap-1">{nav.map((item) => <Link key={item.id} href={tabHref(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`flex min-h-12 items-center border-b-2 px-3 text-sm ${activeTab === item.id ? 'border-ink text-ink' : 'border-transparent text-ink-dim'}`}>{item.label}</Link>)}</div></nav>
+      <nav className="border-b border-line bg-paper-raised px-3 md:hidden" aria-label="Demo admin sections"><div className="grid grid-cols-4">{nav.map((item) => <Link key={item.id} href={tabHref(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`flex min-h-11 items-center justify-center border-b-2 px-1 text-center text-xs ${activeTab === item.id ? 'border-ink text-ink' : 'border-transparent text-ink-dim'}`}>{item.label}</Link>)}</div></nav>
 
       <div className="mx-auto grid max-w-[1600px] md:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="hidden min-h-[calc(100dvh-68px)] border-r border-line bg-paper-raised p-4 md:block"><p className="t-meta px-3 py-2">Client preview</p><nav className="mt-2" aria-label="Demo admin sections"><ul className="space-y-1">{nav.map((item) => <li key={item.id}><Link href={tabHref(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`block px-3 py-2.5 text-sm ${activeTab === item.id ? 'bg-ink text-paper' : 'text-ink-dim hover:bg-ink/5 hover:text-ink'}`}>{item.label}</Link></li>)}</ul></nav><p className="mt-8 border border-line p-3 text-xs leading-relaxed text-ink-dim">Demo data only. Customer details and all create, edit, delete, and status actions are disabled.</p></aside>
-        <main className="min-w-0 p-4 sm:p-8"><ActiveContent /></main>
+        <main id="main" className="min-w-0 p-4 sm:p-8"><ActiveContent /></main>
       </div>
     </div>
   )

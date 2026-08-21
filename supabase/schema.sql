@@ -3,6 +3,8 @@
 -- Run this in your Supabase SQL Editor
 -- ============================================================
 
+BEGIN;
+
 -- Enable UUID extension (usually already enabled)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -79,14 +81,17 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
 CREATE TRIGGER update_categories_updated_at
   BEFORE UPDATE ON categories
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at
   BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_site_settings_updated_at ON site_settings;
 CREATE TRIGGER update_site_settings_updated_at
   BEFORE UPDATE ON site_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -101,69 +106,83 @@ ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- IMPORTANT: Disable public sign-ups in Supabase Dashboard
--- Authentication → Providers → Email → toggle "Enable sign ups" OFF
--- This ensures only manually-created admin accounts can authenticate.
+-- Customer checkout requires public sign-ups to remain enabled. Catalog and
+-- storage mutation policies below still authorize only the pinned owner email;
+-- an authenticated customer is not an administrator.
 -- ============================================================
 
 -- Categories: anon can read only active rows
+DROP POLICY IF EXISTS "categories_public_read" ON categories;
 CREATE POLICY "categories_public_read" ON categories
   FOR SELECT USING (is_active = TRUE);
 
--- Any authenticated user can read ALL categories (including inactive)
--- so the admin panel can show inactive rows in dropdowns/lists
+-- The owner can read all categories (including inactive) for admin lists.
+DROP POLICY IF EXISTS "categories_admin_select" ON categories;
 CREATE POLICY "categories_admin_select" ON categories
   FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Only the admin email can INSERT/UPDATE/DELETE categories
+DROP POLICY IF EXISTS "categories_admin_insert" ON categories;
 CREATE POLICY "categories_admin_insert" ON categories
   FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
+DROP POLICY IF EXISTS "categories_admin_update" ON categories;
 CREATE POLICY "categories_admin_update" ON categories
   FOR UPDATE
   USING     (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
   WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
+DROP POLICY IF EXISTS "categories_admin_delete" ON categories;
 CREATE POLICY "categories_admin_delete" ON categories
   FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Products: anon can read only active rows
+DROP POLICY IF EXISTS "products_public_read" ON products;
 CREATE POLICY "products_public_read" ON products
   FOR SELECT USING (is_active = TRUE);
 
--- Any authenticated user can read ALL products (including inactive)
+-- The owner can read all products (including inactive).
+DROP POLICY IF EXISTS "products_admin_select" ON products;
 CREATE POLICY "products_admin_select" ON products
   FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Only the admin email can INSERT/UPDATE/DELETE products
+DROP POLICY IF EXISTS "products_admin_insert" ON products;
 CREATE POLICY "products_admin_insert" ON products
   FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
+DROP POLICY IF EXISTS "products_admin_update" ON products;
 CREATE POLICY "products_admin_update" ON products
   FOR UPDATE
   USING     (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
   WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
+DROP POLICY IF EXISTS "products_admin_delete" ON products;
 CREATE POLICY "products_admin_delete" ON products
   FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Admin logs: only the admin email can read or write audit entries
+DROP POLICY IF EXISTS "logs_admin_select" ON admin_logs;
 CREATE POLICY "logs_admin_select" ON admin_logs
   FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
+DROP POLICY IF EXISTS "logs_admin_insert" ON admin_logs;
 CREATE POLICY "logs_admin_insert" ON admin_logs
   FOR INSERT WITH CHECK (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
 -- Storefront settings: the active theme is public, but only the owner can write.
+DROP POLICY IF EXISTS "site_settings_public_read" ON site_settings;
 CREATE POLICY "site_settings_public_read" ON site_settings
   FOR SELECT USING (id = 'storefront');
 
+DROP POLICY IF EXISTS "site_settings_admin_insert" ON site_settings;
 CREATE POLICY "site_settings_admin_insert" ON site_settings
   FOR INSERT WITH CHECK (
     id = 'storefront'
     AND LOWER(auth.email()) = 'enchantedonline89@gmail.com'
   );
 
+DROP POLICY IF EXISTS "site_settings_admin_update" ON site_settings;
 CREATE POLICY "site_settings_admin_update" ON site_settings
   FOR UPDATE
   USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com')
@@ -174,24 +193,11 @@ CREATE POLICY "site_settings_admin_update" ON site_settings
 
 -- ============================================================
 -- STORAGE RLS — Run AFTER creating the product-images bucket
--- In Supabase Dashboard: Storage → product-images → Policies
+-- The executable policies live in admin-rls-ensure.sql. They allow public
+-- reads but pin every mutation to the owner email; merely checking
+-- auth.uid() IS NOT NULL would let any customer upload or replace catalog
+-- images and must not be used.
 -- ============================================================
--- Anyone can read (download) files from the public bucket
--- Only authenticated users can upload files
--- SQL to run in Supabase SQL editor for Storage policies:
---
--- INSERT INTO storage.policies (name, bucket_id, definition, check_definition, command, roles)
--- VALUES
---   ('storage_public_read', 'product-images',
---    'true', NULL, 'SELECT', '{anon,authenticated}'),
---   ('storage_admin_insert', 'product-images',
---    NULL, '(auth.uid() IS NOT NULL)', 'INSERT', '{authenticated}'),
---   ('storage_admin_update', 'product-images',
---    '(auth.uid() IS NOT NULL)', '(auth.uid() IS NOT NULL)', 'UPDATE', '{authenticated}'),
---   ('storage_admin_delete', 'product-images',
---    '(auth.uid() IS NOT NULL)', NULL, 'DELETE', '{authenticated}');
---
--- Alternatively configure via Dashboard: Storage → product-images → Policies → New Policy
 
 -- ============================================================
 -- INDEXES
@@ -333,3 +339,5 @@ INSERT INTO products (name, description, price, image_url, sizes, is_featured, c
 -- ============================================================
 -- NOTE: Create a bucket named 'product-images' with public access enabled
 -- in your Supabase Dashboard → Storage → New Bucket
+
+COMMIT;

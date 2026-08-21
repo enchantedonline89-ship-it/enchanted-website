@@ -115,7 +115,7 @@ export default function ThemeSettingsForm({ initialTheme }: { initialTheme: Site
             return (
               <label
                 key={id}
-                className={`relative cursor-pointer border p-5 transition-colors ${
+                className={`relative cursor-pointer border p-5 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 ${
                   selected
                     ? 'border-ink bg-paper-sunken'
                     : 'border-line bg-paper-raised hover:border-line-strong'
@@ -165,7 +165,12 @@ export default function ThemeSettingsForm({ initialTheme }: { initialTheme: Site
         <button type="submit" disabled={saving || theme === savedTheme} className="btn btn-primary">
           {saving ? 'Applying…' : 'Apply theme'}
         </button>
-        <a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+        <a
+          href={`/?preview_theme=${theme}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost"
+        >
           Preview shop
         </a>
         <p className="text-xs text-ink-dim sm:ml-2">Changes apply to the whole storefront.</p>

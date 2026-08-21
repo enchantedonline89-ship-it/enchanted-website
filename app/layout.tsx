@@ -60,11 +60,18 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/brand/hero.webp",
+        alt: "Enchanted Style women's fashion",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_NAME,
     description: DESCRIPTION,
+    images: ["/brand/hero.webp"],
   },
   icons: { icon: "/favicon.ico" },
 }

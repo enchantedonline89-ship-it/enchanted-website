@@ -3,27 +3,28 @@ import { SITE_URL } from "@/components/seo/site"
 import { getCatalog } from "@/lib/catalog"
 import { productHref } from "@/lib/product-url"
 
-// Mirrors the visible "Last updated March 2026" copy shown on the policy
-// pages (PageShell's meta prop). Keep this in sync if that copy changes.
+// These reflect substantive, visible content changes rather than request time.
 const POLICY_LAST_UPDATED = new Date("2026-03-01")
+const SHIPPING_LAST_UPDATED = new Date("2026-08-14")
+const HELP_LAST_UPDATED = new Date("2026-08-21")
 
 // Real signal, not a fabricated date: the mock catalog's own updated_at
 // timestamps, the same rows the homepage renders. Only static marketing
 // routes are listed below; /admin, /auth, and /orders are gated (see
-// proxy.ts) and are excluded, not just noindexed, so nothing sends a
+// middleware.ts) and are excluded, not just noindexed, so nothing sends a
 // crawler to a URL that only ever redirects it away.
-const SITE_LAST_UPDATED = new Date("2026-08-12")
+const SITE_LAST_UPDATED = new Date("2026-08-21")
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { products, categories } = await getCatalog()
+  const { products, categories, source } = await getCatalog()
   const stamps = [...products, ...categories]
     .map((row) => new Date(row.updated_at).getTime())
     .filter(Number.isFinite)
-  const catalogLastModified = stamps.length
+  const catalogLastModified = source === "live" && stamps.length
     ? new Date(Math.max(...stamps))
     : SITE_LAST_UPDATED
 
-  const productEntries: MetadataRoute.Sitemap = products.map((product) => ({
+  const productEntries: MetadataRoute.Sitemap = (source === "live" ? products : []).map((product) => ({
     url: new URL(productHref(product), SITE_URL).toString(),
     lastModified: new Date(product.updated_at),
     changeFrequency: "weekly",
@@ -40,13 +41,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${SITE_URL}/size-guide`,
-      lastModified: POLICY_LAST_UPDATED,
+      lastModified: HELP_LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
       url: `${SITE_URL}/shipping`,
-      lastModified: POLICY_LAST_UPDATED,
+      lastModified: SHIPPING_LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 0.6,
     },
@@ -58,7 +59,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${SITE_URL}/contact`,
-      lastModified: POLICY_LAST_UPDATED,
+      lastModified: HELP_LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 0.5,
     },

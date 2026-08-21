@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Enchanted Style
 
-## Getting Started
+Next.js 16 storefront and shop-management application for Enchanted Style.
 
-First, run the development server:
+## Local development
 
-```bash
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env.local` when connecting a real Supabase project.
+The public client preview remains available at `/admin/demo` without database
+credentials; protected owner routes require Supabase.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run lint
+npx tsc --noEmit --incremental false
+npm test
+npm run build
+npm run test:e2e
+```
 
-## Learn More
+## Cloudflare Workers
 
-To learn more about Next.js, take a look at the following resources:
+The application uses `@opennextjs/cloudflare` and Wrangler. Authenticate once
+with `wrangler login`, then follow `SETUP.md` for database migrations, secrets,
+preview deployment, and production verification.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npm run preview:cloudflare
+npm run deploy:cloudflare
+```

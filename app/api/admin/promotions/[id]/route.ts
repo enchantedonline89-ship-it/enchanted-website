@@ -15,7 +15,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authorizeAdminRequest(request)
-  if ('error' in auth) return auth.error
+  if (!auth.ok) return auth.error
   const { id } = await params
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid event ID.' }, { status: 400 })
 
@@ -50,7 +50,12 @@ export async function PATCH(
   if (auditError) console.error('Promotion audit insert failed:', auditError)
 
   refreshStorefront()
-  return NextResponse.json({ promotion: data })
+  return NextResponse.json({
+    promotion: data,
+    ...(auditError
+      ? { warning: 'The campaign was updated, but its audit entry failed. Please contact support.' }
+      : {}),
+  })
 }
 
 export async function DELETE(
@@ -58,7 +63,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authorizeAdminRequest(request)
-  if ('error' in auth) return auth.error
+  if (!auth.ok) return auth.error
   const { id } = await params
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid event ID.' }, { status: 400 })
 
@@ -83,5 +88,10 @@ export async function DELETE(
   if (auditError) console.error('Promotion audit insert failed:', auditError)
 
   refreshStorefront()
-  return NextResponse.json({ deleted: true })
+  return NextResponse.json({
+    deleted: true,
+    ...(auditError
+      ? { warning: 'The campaign was deleted, but its audit entry failed. Please contact support.' }
+      : {}),
+  })
 }

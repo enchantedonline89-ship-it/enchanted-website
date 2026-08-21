@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockOrderNumber } from '@/lib/mock-order'
 
 const h = vi.hoisted(() => ({
   mockMode: { value: false },
@@ -100,11 +101,22 @@ describe('POST /api/orders/track', () => {
 
   it('provides a fictional lookup only in mock mode', async () => {
     h.mockMode.value = true
+    const email = 'demo@enchanted.style'
     const response = await POST(request({
-      order_number: 'ES-2608-001001',
-      email: 'demo@enchanted.style',
+      order_number: mockOrderNumber(email),
+      email,
     }))
     expect(response.status).toBe(200)
+    expect(h.from).not.toHaveBeenCalled()
+  })
+
+  it('rejects a fictional reference paired with a different email', async () => {
+    h.mockMode.value = true
+    const response = await POST(request({
+      order_number: mockOrderNumber('demo@enchanted.style'),
+      email: 'someone-else@example.com',
+    }))
+    expect(response.status).toBe(404)
     expect(h.from).not.toHaveBeenCalled()
   })
 })

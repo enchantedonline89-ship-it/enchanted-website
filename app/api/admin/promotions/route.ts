@@ -5,7 +5,7 @@ import { validatePromotionInput } from '@/lib/promotion-input'
 
 export async function POST(request: NextRequest) {
   const auth = await authorizeAdminRequest(request)
-  if ('error' in auth) return auth.error
+  if (!auth.ok) return auth.error
 
   let body: unknown
   try {
@@ -38,5 +38,10 @@ export async function POST(request: NextRequest) {
 
   revalidatePath('/', 'layout')
   revalidatePath('/product/[slug]', 'page')
-  return NextResponse.json({ promotion: data }, { status: 201 })
+  return NextResponse.json({
+    promotion: data,
+    ...(auditError
+      ? { warning: 'The campaign was created, but its audit entry failed. Please contact support.' }
+      : {}),
+  }, { status: 201 })
 }

@@ -3,27 +3,35 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // ─── Rate limiting: 1 deletion per 10 minutes per IP ─────────────────────────
 const WINDOW_MS = 10 * 60_000
+const MAX_TRACKED_IPS = 5_000
 const deleteHits = new Map<string, number>()
 
-setInterval(() => {
-  const cutoff = Date.now() - WINDOW_MS
-  for (const [ip, ts] of deleteHits) {
-    if (ts < cutoff) deleteHits.delete(ip)
-  }
-}, 5 * 60_000)
-
 function isRateLimited(ip: string): boolean {
+  const now = Date.now()
   const last = deleteHits.get(ip)
-  if (last && Date.now() - last < WINDOW_MS) return true
-  deleteHits.set(ip, Date.now())
+  if (last && now - last < WINDOW_MS) return true
+  if (!last && deleteHits.size >= MAX_TRACKED_IPS) {
+    const cutoff = now - WINDOW_MS
+    for (const [key, timestamp] of deleteHits) {
+      if (timestamp < cutoff) deleteHits.delete(key)
+    }
+    if (deleteHits.size >= MAX_TRACKED_IPS) return true
+  }
+  deleteHits.set(ip, now)
   return false
 }
 
 export async function DELETE(request: NextRequest) {
+  const origin = request.headers.get('origin')
+  if (origin && origin !== request.nextUrl.origin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   // Rate limit
+  const cloudflareIp = request.headers.get('cf-connecting-ip')
   const realIp = request.headers.get('x-real-ip')
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
+  const ip = cloudflareIp ?? realIp ?? (forwarded ? forwarded.split(',').at(-1)!.trim() : 'unknown')
   if (isRateLimited(ip)) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
   }

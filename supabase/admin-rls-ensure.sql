@@ -1,4 +1,6 @@
 -- ============================================================
+
+BEGIN;
 -- Enchanted Style — Admin RLS Policy Fix
 -- Run this in the Supabase SQL Editor (project: mnbdyiemlifvxvgobfwq)
 --
@@ -26,8 +28,7 @@ DROP POLICY IF EXISTS "categories_admin_delete"  ON categories;
 CREATE POLICY "categories_public_read" ON categories
   FOR SELECT USING (is_active = TRUE);
 
--- Any authenticated user can read all categories (including inactive)
--- so the admin panel can display inactive ones in lists/dropdowns
+-- The owner can read all categories (including inactive) in admin lists.
 CREATE POLICY "categories_admin_select" ON categories
   FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
@@ -56,7 +57,7 @@ DROP POLICY IF EXISTS "products_admin_delete"  ON products;
 CREATE POLICY "products_public_read" ON products
   FOR SELECT USING (is_active = TRUE);
 
--- Any authenticated user can read all products (including inactive)
+-- The owner can read all products (including inactive).
 CREATE POLICY "products_admin_select" ON products
   FOR SELECT USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
 
@@ -115,3 +116,5 @@ CREATE POLICY "admin_update_product_images" ON storage.objects
 CREATE POLICY "admin_delete_product_images" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'product-images' AND LOWER(auth.email()) = 'enchantedonline89@gmail.com');
+
+COMMIT;

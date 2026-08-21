@@ -5,6 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Auth is faked: Supabase no longer resolves.
 const signOut = vi.hoisted(() => vi.fn())
+const routerReplace = vi.hoisted(() => vi.fn())
+const routerRefresh = vi.hoisted(() => vi.fn())
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: routerReplace, refresh: routerRefresh }),
+}))
+
 vi.mock('@/lib/auth-context', () => ({
   useAuth: () => ({
     user: { id: 'session-user-id', email: 'nour@example.com' },
@@ -27,11 +34,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ deleted: true }) })
   signOut.mockResolvedValue(undefined)
-  // window.location.href = "/" would abort the jsdom navigation; neutralise it.
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: { href: 'http://localhost/', assign: vi.fn(), replace: vi.fn() },
-  })
+  routerReplace.mockReset()
+  routerRefresh.mockReset()
 })
 
 const dialog = () => screen.getByRole('dialog')
@@ -89,6 +93,8 @@ describe('DeleteAccountModal', () => {
     await user.click(within(dialog()).getByRole('button', { name: /delete my account/i }))
 
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
+    expect(routerReplace).toHaveBeenCalledWith('/')
+    expect(routerRefresh).toHaveBeenCalledTimes(1)
   })
 
   it('surfaces the API error and does not sign the user out', async () => {

@@ -1,3 +1,4 @@
+import 'server-only'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
@@ -39,9 +40,15 @@ export async function createClient() {
  * Deliberately cookie-free and session-less.
  */
 export async function createServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceRoleKey) {
+    throw new Error('Supabase service credentials are not configured.')
+  }
+
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    url,
+    serviceRoleKey,
     {
       auth: {
         persistSession: false,

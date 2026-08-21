@@ -32,8 +32,8 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Logo size="lg" />
             <p className="t-body mt-5 max-w-[34ch] text-[0.9375rem]">
-              Women&apos;s fashion curated in Lebanon. Browse here, order on WhatsApp,
-              pay the driver when it arrives.
+              Women&apos;s fashion curated in Lebanon. Order here, confirm on WhatsApp,
+              and pay the driver when it arrives.
             </p>
             <div className="mt-6 flex items-center gap-3">
               <a

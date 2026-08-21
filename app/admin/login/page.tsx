@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="flex min-h-[100dvh] flex-col">
+    <main id="main" className="flex min-h-[100dvh] flex-col">
       <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-line px-5 lg:px-10">
         <Logo />
         <p className="t-meta">Staff</p>

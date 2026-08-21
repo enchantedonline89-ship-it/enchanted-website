@@ -6,7 +6,7 @@
 const FACTS = [
   { term: "Payment", detail: "Cash on delivery, everywhere in Lebanon" },
   { term: "Delivery", detail: "$4 anywhere in Lebanon" },
-  { term: "Ordering", detail: "Confirmed over WhatsApp, usually same day" },
+  { term: "Ordering", detail: "Confirmed directly over WhatsApp" },
 ] as const
 
 export default function DeliveryBand() {

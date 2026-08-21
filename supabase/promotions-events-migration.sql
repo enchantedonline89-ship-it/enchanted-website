@@ -1,6 +1,8 @@
 -- Enchanted Style — scheduled events and discounts
 -- Safe to run more than once in the Supabase SQL editor.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS promotions (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name              TEXT NOT NULL CHECK (char_length(trim(name)) BETWEEN 2 AND 100),
@@ -83,3 +85,5 @@ CREATE POLICY "promotions_admin_delete" ON promotions
 ALTER TABLE admin_logs DROP CONSTRAINT IF EXISTS admin_logs_entity_type_check;
 ALTER TABLE admin_logs ADD CONSTRAINT admin_logs_entity_type_check
   CHECK (entity_type IN ('product', 'category', 'promotion', 'site_setting'));
+
+COMMIT;

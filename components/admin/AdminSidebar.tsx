@@ -16,6 +16,7 @@ import {
 } from '@phosphor-icons/react/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useOverlay } from '@/lib/use-overlay'
 import Logo from '@/components/public/Logo'
 
 const navItems = [
@@ -36,6 +37,7 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const sidebarRef = useOverlay<HTMLElement>(isOpen, () => onClose?.())
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -56,10 +58,15 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       )}
 
       <aside
+        ref={sidebarRef}
+        tabIndex={isOpen ? -1 : undefined}
+        role={isOpen ? 'dialog' : undefined}
+        aria-modal={isOpen || undefined}
+        aria-label={isOpen ? 'Admin navigation' : undefined}
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-line bg-paper-raised transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
-          'md:static md:z-auto md:shrink-0 md:translate-x-0',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:visible md:static md:z-auto md:shrink-0 md:translate-x-0 md:delay-0',
+          isOpen ? 'visible translate-x-0 delay-0' : 'invisible -translate-x-full delay-300',
         )}
       >
         <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-line px-5">
@@ -87,7 +94,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
                     onClick={onClose}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 text-[0.8125rem] transition-colors',
+                      'flex min-h-11 items-center gap-3 px-3 py-2.5 text-[0.8125rem] transition-colors',
                       active
                         ? 'bg-ink text-paper'
                         : 'text-ink-dim hover:bg-ink/6 hover:text-ink',
@@ -105,14 +112,14 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
         <div className="shrink-0 border-t border-line p-3">
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 text-[0.8125rem] text-ink-dim transition-colors hover:text-ink"
+            className="flex min-h-11 items-center gap-3 px-3 py-2.5 text-[0.8125rem] text-ink-dim transition-colors hover:text-ink"
           >
             <ArrowSquareOut size={17} weight="light" />
             View the shop
           </Link>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[0.8125rem] text-ink-dim transition-colors hover:text-ink"
+            className="flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-[0.8125rem] text-ink-dim transition-colors hover:text-ink"
           >
             <SignOut size={17} weight="light" />
             Sign out

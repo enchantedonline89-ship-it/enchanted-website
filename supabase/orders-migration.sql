@@ -3,6 +3,8 @@
 -- Run this in Supabase SQL Editor AFTER schema.sql
 -- ============================================================
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS orders (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          UUID REFERENCES auth.users ON DELETE SET NULL,
@@ -26,14 +28,16 @@ CREATE TABLE IF NOT EXISTS orders (
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can insert their own orders
+DROP POLICY IF EXISTS "Users can insert own orders" ON orders;
 CREATE POLICY "Users can insert own orders" ON orders
   FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (user_id = (SELECT auth.uid()));
 
 -- Authenticated users can read only their own orders
+DROP POLICY IF EXISTS "Users can read own orders" ON orders;
 CREATE POLICY "Users can read own orders" ON orders
   FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
+  USING (user_id = (SELECT auth.uid()));
 
 -- Service role bypasses RLS automatically (no policy needed)
 
@@ -53,3 +57,5 @@ CREATE POLICY "orders_admin_update" ON orders
 DROP POLICY IF EXISTS "orders_admin_delete" ON orders;
 CREATE POLICY "orders_admin_delete" ON orders
   FOR DELETE USING (LOWER(auth.email()) = 'enchantedonline89@gmail.com');
+
+COMMIT;

@@ -25,11 +25,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: async () => ({ from: h.from }),
 }))
 
-// The route registers a module-level cleanup setInterval. Load it under fake
-// timers so the interval never pins the test process open.
-vi.useFakeTimers()
 const { POST } = await import('@/app/api/orders/route')
-vi.useRealTimers()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -166,6 +162,15 @@ describe('POST /api/orders — accepted orders', () => {
   it('tolerates floating-point drift up to $0.01 on the total', async () => {
     const { status } = await post(validBody({ total: 183.985 }))
     expect(status).toBe(200)
+  })
+})
+
+describe('POST /api/orders — preview order references', () => {
+  it('returns a tracking-compatible fictional order number in mock mode', async () => {
+    const { status, json } = await post(validBody())
+    expect(status).toBe(200)
+    expect(json.order_number).toMatch(/^ES-\d{4}-\d{6}$/)
+    expect(json.id).toBe(`mock-order-${json.order_number}`)
   })
 })
 

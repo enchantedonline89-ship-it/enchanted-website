@@ -19,6 +19,12 @@
 
 # production
 /build
+/.open-next/
+
+# local deployment-tool caches and logs
+/.npm-cache/
+/.wrangler-logs/
+/.wrangler/
 
 # misc
 .DS_Store
@@ -41,6 +47,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+cloudflare-env.d.ts
 
 # Claude Code — AI assistant config (may contain tokens / passwords)
 .claude/
@@ -57,3 +64,5 @@ CLAUDE.md
 # skills CLI lockfile; .agents/ itself is ignored
 skills-lock.json
 .env*.local
+.dev.vars
+worker-startup.cpuprofile

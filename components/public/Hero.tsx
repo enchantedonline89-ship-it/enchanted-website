@@ -38,7 +38,7 @@ export default function Hero({ visual }: { visual?: ReactNode }) {
       {/* Gold dust, over everything */}
       <div className="pointer-events-none absolute inset-0">{visual}</div>
 
-      <div className="relative order-1 mx-auto w-full max-w-[1440px] px-5 pt-24 lg:px-10 lg:pb-24">
+      <div className="relative order-1 mx-auto w-full max-w-[1440px] px-5 pt-14 sm:pt-20 lg:px-10 lg:pb-24 lg:pt-24">
         <h1 className="t-display max-w-[24ch] text-ink">
           <span className="mask-line">
             <span>Dressed for the evenings </span>

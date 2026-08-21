@@ -51,7 +51,7 @@ export const getCatalog = cache(async (): Promise<CatalogResult> => {
           .order("sort_order", { ascending: true }),
         supabase
           .from("promotions")
-          .select("id, name, description, campaign_type, scope, category_id, discount_percent, starts_at, ends_at, is_active")
+          .select("id, name, description, campaign_type, scope, category_id, discount_percent, starts_at, ends_at, is_active, category:categories(id, name)")
           .eq("is_active", true)
           .lte("starts_at", now)
           .or(`ends_at.is.null,ends_at.gt.${now}`),

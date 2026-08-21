@@ -3,6 +3,8 @@
 -- Run after orders-migration.sql. Safe to re-run.
 -- ============================================================
 
+BEGIN;
+
 CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 1001;
 
 CREATE OR REPLACE FUNCTION generate_order_number()
@@ -60,3 +62,5 @@ DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 CREATE TRIGGER update_orders_updated_at
   BEFORE UPDATE ON orders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+COMMIT;

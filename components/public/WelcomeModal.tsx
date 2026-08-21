@@ -11,7 +11,7 @@ const STORAGE_KEY = "enchanted_welcome_seen"
 const SLIDES = [
   {
     title: "Everything is in the catalog",
-    body: "Six categories, all current stock. What you see is what we have, and sizes are listed on every piece.",
+    body: "Browse the catalog and see the available sizes listed with each piece.",
   },
   {
     title: "Pick a size, add to cart",
@@ -19,7 +19,7 @@ const SLIDES = [
   },
   {
     title: "Tell us where to deliver",
-    body: "Delivery is $4 anywhere in Lebanon. You give a name, a number and an address, nothing more.",
+    body: "Delivery is $4 anywhere in Lebanon. At checkout, add the name, phone number and address needed for delivery.",
   },
   {
     title: "We confirm on WhatsApp",

@@ -2,11 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // The only email allowed to access /admin/* routes.
-// Set ADMIN_EMAIL in .env.local and Vercel environment variables.
+// Set ADMIN_EMAIL in the local and deployment environment variables.
 // This is a defence-in-depth check at the edge — the API routes also verify this.
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Public, read-only client demo. It contains only fictional/mock records and
   // no mutation controls, live orders, customer PII, or Supabase session.
   if (request.nextUrl.pathname === '/admin/demo') {
@@ -21,7 +21,11 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const isMock = !supabaseUrl || supabaseUrl.includes('your_supabase') || !supabaseUrl.startsWith('https://')
   if (isMock) {
-    if (process.env.NODE_ENV === 'production' && request.nextUrl.pathname.startsWith('/admin')) {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      request.nextUrl.pathname.startsWith('/admin') &&
+      request.nextUrl.pathname !== '/admin/login'
+    ) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
       return NextResponse.redirect(url)
