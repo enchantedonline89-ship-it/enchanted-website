@@ -5,7 +5,7 @@ import { SITE_NAME } from '@/components/seo/site'
 
 const TITLE = 'Shipping and delivery'
 const DESCRIPTION =
-  'Where we deliver, what it costs, and how long an order usually takes to arrive.'
+  'Where Enchanted Style delivers, what it costs, and how to track an order.'
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     url: '/shipping',
     siteName: SITE_NAME,
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_LB',
   },
   twitter: {
     card: 'summary_large_image',
@@ -32,8 +32,8 @@ export default function ShippingPage() {
       <BreadcrumbJsonLd items={[{ name: TITLE, path: '/shipping' }]} />
       <PageShell
         title="Shipping and delivery"
-        standfirst="Where we deliver, what it costs, and how long an order usually takes to arrive."
-        meta="Last updated August 2026"
+        standfirst="Where we deliver, what it costs, and how to track an order."
+        meta="Last updated 26 August 2026"
       >
       <div>
         <section>
@@ -44,13 +44,13 @@ export default function ShippingPage() {
         </section>
 
         <section>
-          <h2>Estimated delivery time</h2>
-          <p>1-3 business days within Beirut; 2-5 business days elsewhere in Lebanon.</p>
+          <h2>Delivery timing</h2>
+          <p>Delivery timing varies by destination. Your order status remains available on the tracking page.</p>
         </section>
 
         <section>
           <h2>How it works</h2>
-          <p>Place your order on site → We send you a WhatsApp confirmation → Delivery is coordinated directly with you.</p>
+          <p>Place your order on the site → Receive your order number and email updates → Pay the driver in cash when the order arrives.</p>
         </section>
 
         <section>
@@ -60,11 +60,11 @@ export default function ShippingPage() {
             <a href="/track-order" className="text-ink hover:underline">
               order tracking page
             </a>{' '}
-            using your reference and checkout email, or message us on{' '}
+            using your order number and checkout email. You may also contact us on{' '}
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
-            with your order reference number for a status update.
+            with your order number if you want help.
           </p>
         </section>
 

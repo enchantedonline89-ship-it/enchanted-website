@@ -31,6 +31,14 @@ describe('admin catalog input validation', () => {
     })
   })
 
+  it('accepts the crawlable same-origin R2 media path', () => {
+    const image = '/media/products/2026-08/11111111-1111-4111-8111-111111111111.webp'
+    const result = validateCategoryInput({
+      name: 'Dresses', image_url: image, size_system: 'none', sort_order: 0, is_active: true,
+    })
+    expect(result).toMatchObject({ ok: true, value: { image_url: image } })
+  })
+
   it.each([
     [{ name: 'x', size_system: 'none', sort_order: 0, is_active: true }, /name/i],
     [{ name: 'Dresses', image_url: 'javascript:alert(1)', size_system: 'none', sort_order: 0, is_active: true }, /image/i],
@@ -89,6 +97,18 @@ describe('admin catalog input validation', () => {
       { color_ref: 'ruby', size: '37', sku: 'RUBY-37', stock_quantity: 3 },
       { color_ref: 'ruby', size: '38', sku: null, stock_quantity: 0 },
     ])
+  })
+
+  it('allows incomplete drafts but blocks incomplete active products', () => {
+    const draft = {
+      name: 'Unfinished piece', description: '', category_id: null, sku: '', price: '', image_url: '',
+      additional_images: [], sizes: [], fit_advice: '', materials: '', heel_height_cm: '', model_note: '',
+      is_featured: false, is_active: false, sort_order: 0, colors: [], variants: [],
+    }
+    expect(validateProductInput(draft).ok).toBe(true)
+    const active = validateProductInput({ ...draft, is_active: true })
+    expect(active.ok).toBe(false)
+    if (!active.ok) expect(active.error).toMatch(/price/i)
   })
 
   it.each([

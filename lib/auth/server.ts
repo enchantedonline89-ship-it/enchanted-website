@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth'
+import { twoFactor } from 'better-auth/plugins'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getCloudflareEnv } from '@/lib/cloudflare/env'
@@ -27,7 +28,7 @@ export async function getAuth() {
       : {}
 
   return betterAuth({
-    appName: 'Enchanted',
+    appName: 'Enchanted Style',
     baseURL,
     basePath: '/api/auth',
     secret,
@@ -63,12 +64,18 @@ export async function getAuth() {
       },
     },
     socialProviders,
+    plugins: [twoFactor({ issuer: 'Enchanted Style' })],
     user: {
       additionalFields: {
         role: {
           type: 'string',
           required: true,
           defaultValue: 'customer',
+          input: false,
+        },
+        adminRole: {
+          type: 'string',
+          required: false,
           input: false,
         },
       },
@@ -78,10 +85,11 @@ export async function getAuth() {
         create: {
           after: async (user) => {
             const role = user.email.toLowerCase() === adminEmail ? 'admin' : 'customer'
+            const adminRole = role === 'admin' ? 'owner' : null
             await env.DB.batch([
               env.DB.prepare(
-                'UPDATE "user" SET role = ?, "updatedAt" = ? WHERE id = ?',
-              ).bind(role, new Date().toISOString(), user.id),
+                'UPDATE "user" SET role = ?, "adminRole" = ?, "updatedAt" = ? WHERE id = ?',
+              ).bind(role, adminRole, new Date().toISOString(), user.id),
               env.DB.prepare(
                 `INSERT OR IGNORE INTO customer_profiles
                   (user_id, created_at, updated_at)
@@ -117,19 +125,36 @@ export type EnchantedSession = Awaited<ReturnType<EnchantedAuth['api']['getSessi
 export async function getServerSession(): Promise<EnchantedSession> {
   try {
     return await (await getAuth()).api.getSession({ headers: await headers() })
-  } catch {
+  } catch (error) {
+    console.error('Session lookup failed', error instanceof Error ? error.message : 'unknown error')
     return null
   }
 }
 
-export async function requireCustomer() {
+export async function requireCustomer(returnTo = '/') {
   const session = await getServerSession()
-  if (!session?.user) redirect('/?auth=1')
+  if (!session?.user) redirect(`/?auth=1&returnTo=${encodeURIComponent(returnTo)}`)
   return session
 }
 
-export async function requireAdmin() {
+async function requireStaff(twoFactorRequired: boolean) {
   const session = await getServerSession()
   if (!session?.user || session.user.role !== 'admin') redirect('/admin/login')
+  const env = await getCloudflareEnv()
+  if (!env) redirect('/admin/login')
+  const staff = await env.DB.prepare(
+    `SELECT "adminRole" AS admin_role, "twoFactorEnabled" AS two_factor_enabled
+     FROM "user" WHERE id = ? AND role = 'admin'`,
+  ).bind(session.user.id).first<{ admin_role: string | null; two_factor_enabled: number }>()
+  if (!staff?.admin_role) redirect('/admin/login')
+  if (twoFactorRequired && staff.two_factor_enabled !== 1) redirect('/admin/security')
   return session
+}
+
+export function requireAdminEnrollment() {
+  return requireStaff(false)
+}
+
+export function requireAdmin() {
+  return requireStaff(true)
 }

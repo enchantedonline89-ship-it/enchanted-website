@@ -28,6 +28,7 @@ export default function AuthModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  const [googleAvailable, setGoogleAvailable] = useState(false)
 
   const dialogRef = useOverlay<HTMLDivElement>(open, onClose)
 
@@ -35,6 +36,20 @@ export default function AuthModal({
   useEffect(() => {
     if (user && open) onClose()
   }, [user, open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void fetch('/api/auth/capabilities', { credentials: 'same-origin' })
+      .then(async (response) => {
+        const value = await response.json() as { google?: unknown }
+        if (!cancelled) setGoogleAvailable(response.ok && value.google === true)
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleAvailable(false)
+      })
+    return () => { cancelled = true }
+  }, [open])
 
   // Clear transient state when the panel closes, during render rather than in
   // an effect so reopening never flashes the previous error.
@@ -66,8 +81,9 @@ export default function AuthModal({
 
     if (message) {
       setError(message)
-    } else if (mode === "forgot") {
+    } else if (mode === "forgot" || mode === "signup") {
       setSent(true)
+      setPassword("")
     }
     setBusy(false)
   }
@@ -116,7 +132,7 @@ export default function AuthModal({
         </div>
 
         <div className="p-5">
-          {mode !== "forgot" && (
+          {mode !== "forgot" && googleAvailable && (
             <>
               <button
                 onClick={handleGoogle}
@@ -140,8 +156,9 @@ export default function AuthModal({
             <div className="flex flex-col gap-4">
               <p className="text-[0.9375rem] text-ink">Check your inbox.</p>
               <p className="t-body text-[0.875rem]">
-                If an account exists for {email.trim()}, a reset link is on its way. The
-                link expires in one hour.
+                {mode === "signup"
+                  ? `We sent a verification link to ${email.trim()}. Verify your email, then sign in to continue.`
+                  : `If an account exists for ${email.trim()}, a reset link is on its way. The link expires in one hour.`}
               </p>
               <button onClick={() => switchMode("signin")} className="btn btn-ghost w-full">
                 Back to sign in
@@ -185,7 +202,8 @@ export default function AuthModal({
                     id="auth-password"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={12}
+                    maxLength={128}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="field"
@@ -194,7 +212,7 @@ export default function AuthModal({
                   />
                   {mode === "signup" && (
                     <p className="t-meta mt-1.5 normal-case tracking-normal">
-                      At least 6 characters.
+                      Use 12 to 128 characters.
                     </p>
                   )}
                 </div>

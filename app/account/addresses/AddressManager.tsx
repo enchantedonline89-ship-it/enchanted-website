@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { setAnalyticsConsent } from '@/components/analytics/consent'
 import {
   LEBANON_GOVERNORATES,
   MAX_ACTIVE_ADDRESSES,
@@ -141,6 +142,7 @@ export default function AddressManager({
         marketingConsent: result.profile.marketingConsent,
         analyticsConsent: result.profile.analyticsConsent,
       })
+      setAnalyticsConsent(result.profile.analyticsConsent)
       setNotice('Account details saved.')
     } catch (caught) {
       const failure = caught as ApiFailure

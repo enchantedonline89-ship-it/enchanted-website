@@ -41,7 +41,7 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-sm">
           <h1 className="t-section text-ink">Sign in to manage the shop.</h1>
           <p className="t-body mt-4 text-[0.9375rem]">
-            This panel is for the shop owner. Customer accounts sign in from the
+            This panel is for authorized store staff. Customer accounts sign in from the
             storefront instead.
           </p>
 

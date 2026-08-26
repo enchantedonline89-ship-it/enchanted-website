@@ -147,8 +147,7 @@ describe('ProductCard — color and variant stock', () => {
     }])
   })
 
-  it('prevents adding when the selected color has no stock', async () => {
-    const user = userEvent.setup()
+  it('disables a color that has no stock', () => {
     const product = makeColorProduct({
       variants: makeColorProduct().variants?.map((variant) =>
         variant.color_id === 'color-red'
@@ -158,10 +157,23 @@ describe('ProductCard — color and variant stock', () => {
     })
     renderCard(product)
 
-    await user.click(screen.getByRole('button', { name: /select ruby red/i }))
-
-    expect(screen.getByRole('button', { name: /^out of stock$/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /select ruby red.*out of stock/i })).toBeDisabled()
     expect(readCart().lines).toEqual([])
+  })
+
+  it('shows the selected color image on the product card', async () => {
+    const user = userEvent.setup()
+    const base = makeColorProduct()
+    renderCard(makeColorProduct({
+      colors: base.colors?.map((color) => ({ ...color, image_url: `https://example.test/${color.id}.jpg` })),
+    }))
+
+    await user.click(screen.getByRole('button', { name: /select midnight blue/i }))
+
+    expect(screen.getByRole('img', { name: /velvet gold-strap stiletto/i })).toHaveAttribute(
+      'src',
+      'https://example.test/color-blue.jpg',
+    )
   })
 })
 

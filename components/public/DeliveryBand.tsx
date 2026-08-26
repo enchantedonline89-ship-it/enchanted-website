@@ -6,12 +6,12 @@
 const FACTS = [
   { term: "Payment", detail: "Cash on delivery, everywhere in Lebanon" },
   { term: "Delivery", detail: "$4 anywhere in Lebanon" },
-  { term: "Ordering", detail: "Confirmed directly over WhatsApp" },
+  { term: "Ordering", detail: "Place it here and receive email updates" },
 ] as const
 
 export default function DeliveryBand() {
   return (
-    <section aria-label="How ordering works" className="border-b border-line">
+    <section aria-label="How ordering works" className="seasonal-service-band border-b border-line">
       <dl className="mx-auto grid max-w-[1440px] grid-cols-1 gap-y-px px-5 md:grid-cols-[1.1fr_0.85fr_1.25fr] lg:px-10">
         {FACTS.map((fact, i) => (
           <div

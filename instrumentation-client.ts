@@ -1,16 +1,22 @@
+import {
+  ANALYTICS_CONSENT_EVENT,
+  ANALYTICS_ROUTE_EVENT,
+  getAnalyticsConsent,
+  isPrivateAnalyticsPath,
+} from '@/components/analytics/consent'
+
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY
-const CONSENT_KEY = 'enchanted_analytics_consent'
 
 let posthogStarted = false
-let replayStarted = false
+let posthogCapturing = false
+let replayAdded = false
+let replayRunning = false
+let routeAllowsAnalytics = typeof window !== 'undefined'
+  && !isPrivateAnalyticsPath(window.location.pathname)
 
-function consentGranted(): boolean {
-  try {
-    return window.localStorage.getItem(CONSENT_KEY) === 'granted'
-  } catch {
-    return false
-  }
+function analyticsAllowed(): boolean {
+  return routeAllowsAnalytics && getAnalyticsConsent()
 }
 
 if (SENTRY_DSN) {
@@ -34,26 +40,43 @@ if (SENTRY_DSN) {
       ],
     })
 
-    const enableReplay = () => {
-      if (replayStarted) return
-      replayStarted = true
-      Sentry.addIntegration(Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: false,
-      }))
+    const syncReplay = () => {
+      if (analyticsAllowed()) {
+        if (!replayAdded) {
+          replayAdded = true
+          Sentry.addIntegration(Sentry.replayIntegration({
+            maskAllText: true,
+            maskAllInputs: true,
+            blockAllMedia: true,
+          }))
+          Sentry.getReplay()?.start()
+          replayRunning = true
+        } else if (!replayRunning) {
+          Sentry.getReplay()?.start()
+          replayRunning = true
+        }
+      } else if (replayRunning) {
+        replayRunning = false
+        void Sentry.getReplay()?.stop({ flush: false })
+      }
     }
-    if (consentGranted()) enableReplay()
-    window.addEventListener('enchanted:analytics-consent', ((event: CustomEvent<boolean>) => {
-      if (event.detail) enableReplay()
+    syncReplay()
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, syncReplay)
+    window.addEventListener(ANALYTICS_ROUTE_EVENT, ((event: CustomEvent<boolean>) => {
+      routeAllowsAnalytics = event.detail
+      syncReplay()
     }) as EventListener)
   })
 }
 
 async function startPostHog() {
-  if (!POSTHOG_KEY || posthogStarted || !consentGranted()) return
+  if (!POSTHOG_KEY || posthogStarted || !analyticsAllowed()) return
   posthogStarted = true
   const { default: posthog } = await import('posthog-js')
+  if (!analyticsAllowed()) {
+    posthogStarted = false
+    return
+  }
   posthog.init(POSTHOG_KEY, {
     api_host: '/atelier',
     ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ?? 'https://eu.posthog.com',
@@ -67,13 +90,46 @@ async function startPostHog() {
     },
     persistence: 'localStorage+cookie',
   })
-  posthog.capture('$pageview', { $current_url: window.location.href })
+  posthogCapturing = true
+}
+
+async function syncPostHog(reset = false) {
+  if (!POSTHOG_KEY) return
+  if (!posthogStarted) {
+    if (analyticsAllowed()) await startPostHog()
+    return
+  }
+  const { default: posthog } = await import('posthog-js')
+  if (analyticsAllowed()) {
+    if (posthogCapturing) return
+    posthog.opt_in_capturing()
+    posthog.startSessionRecording()
+    posthogCapturing = true
+  } else {
+    if (posthogCapturing) posthog.stopSessionRecording()
+    if (reset) posthog.reset()
+    posthog.opt_out_capturing()
+    posthogCapturing = false
+  }
+}
+
+async function capturePageview() {
+  await syncPostHog()
+  if (!POSTHOG_KEY || !posthogStarted || !analyticsAllowed()) return
+  const { default: posthog } = await import('posthog-js')
+  posthog.capture('$pageview', { $current_url: window.origin + window.location.pathname })
 }
 
 if (typeof window !== 'undefined') {
   void startPostHog()
-  window.addEventListener('enchanted:analytics-consent', ((event: CustomEvent<boolean>) => {
-    if (event.detail) void startPostHog()
+  window.addEventListener(ANALYTICS_CONSENT_EVENT, ((event: CustomEvent<boolean>) => {
+    if (event.detail) void capturePageview()
+    else void syncPostHog(true)
+  }) as EventListener)
+  window.addEventListener(ANALYTICS_ROUTE_EVENT, ((event: CustomEvent<boolean>) => {
+    routeAllowsAnalytics = event.detail
+    if (event.detail) void capturePageview()
+    else void syncPostHog()
   }) as EventListener)
 }
 

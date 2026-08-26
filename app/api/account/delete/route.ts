@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuth } from '@/lib/auth/server'
 import { getD1Database } from '@/lib/cloudflare/d1'
+import { readBoundedJsonObject, RequestBodyTooLargeError } from '@/lib/request-body'
 
 async function shortHash(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -14,9 +15,12 @@ export async function DELETE(request: NextRequest) {
   }
   let confirmation = ''
   try {
-    const body = await request.json() as { confirm?: unknown }
+    const body = await readBoundedJsonObject(request, 1024)
     confirmation = typeof body.confirm === 'string' ? body.confirm : ''
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 })
+    }
     return NextResponse.json({ error: 'Confirmation is required.' }, { status: 400 })
   }
   if (confirmation !== 'DELETE') {

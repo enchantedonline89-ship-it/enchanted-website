@@ -65,7 +65,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
     heel_height_cm: product?.heel_height_cm?.toString() ?? '',
     model_note: product?.model_note ?? '',
     is_featured: product?.is_featured ?? false,
-    is_active: product?.is_active ?? true,
+    is_active: product?.is_active ?? false,
     sort_order: product?.sort_order ?? 0,
   })
 
@@ -75,6 +75,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
     : [...form.sizes, size])
 
   function addColor() {
+    setInventoryEnabled(true)
     setColors(current => [...current, {
       id: null,
       ref: `new-${crypto.randomUUID()}`,
@@ -105,8 +106,24 @@ export default function ProductForm({ product, categories, mode }: Props) {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    setSaving(true)
     setError(null)
+    const variants = variantsPayload()
+    if (form.is_active) {
+      const missing = !form.price
+        ? 'Add a price before making this product active.'
+        : !form.category_id
+          ? 'Choose a category before making this product active.'
+          : !form.image_url
+            ? 'Add a cover photo before making this product active.'
+            : !inventoryEnabled || !variants.some((variant) => variant.stock_quantity === null || variant.stock_quantity > 0)
+              ? 'Add at least one in-stock option before making this product active.'
+              : null
+      if (missing) {
+        setError(missing)
+        return
+      }
+    }
+    setSaving(true)
     try {
       const payload = {
         ...form,
@@ -124,7 +141,7 @@ export default function ProductForm({ product, categories, mode }: Props) {
           image_url: color.image_url,
           sort_order: index,
         })),
-        variants: variantsPayload(),
+        variants,
       }
       await adminCatalogRequest(mode === 'create' ? '/api/admin/products' : `/api/admin/products/${product!.id}`, {
         method: mode === 'create' ? 'POST' : 'PATCH',
@@ -149,6 +166,11 @@ export default function ProductForm({ product, categories, mode }: Props) {
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl space-y-7">
       {error && <div role="alert" className="border border-signal-error/30 bg-signal-error/10 px-4 py-3 text-sm text-signal-error">{error}</div>}
+      {mode === 'create' && (
+        <p className="border border-line bg-paper-sunken px-4 py-3 text-sm text-ink-dim">
+          New products start hidden. Add the selling details and stock below, then make the product active when it is ready.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -160,16 +182,16 @@ export default function ProductForm({ product, categories, mode }: Props) {
           <input id="product-sku" value={form.sku} onChange={event => set('sku', event.target.value.toUpperCase())} maxLength={60} className={inputClass} placeholder="DRESS-RUBY" />
         </div>
         <div>
-          <label htmlFor="product-price" className={labelClass}>Price (USD)</label>
-          <input id="product-price" type="number" inputMode="decimal" step="0.01" min="0" value={form.price} onChange={event => set('price', event.target.value)} className={inputClass} placeholder="0.00" />
+          <label htmlFor="product-price" className={labelClass}>Price (USD){form.is_active ? ' *' : ''}</label>
+          <input id="product-price" type="number" inputMode="decimal" step="0.01" min="0" value={form.price} onChange={event => set('price', event.target.value)} required={form.is_active} className={inputClass} placeholder="0.00" />
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="product-description" className={labelClass}>Description</label>
           <textarea id="product-description" value={form.description} onChange={event => set('description', event.target.value)} rows={4} maxLength={5000} className={`${inputClass} resize-y`} />
         </div>
         <div>
-          <label htmlFor="product-category" className={labelClass}>Category</label>
-          <select id="product-category" value={form.category_id} onChange={event => set('category_id', event.target.value)} className={inputClass}>
+          <label htmlFor="product-category" className={labelClass}>Category{form.is_active ? ' *' : ''}</label>
+          <select id="product-category" value={form.category_id} onChange={event => set('category_id', event.target.value)} required={form.is_active} className={inputClass}>
             <option value="">No category</option>
             {categories.map(category => <option key={category.id} value={category.id}>{category.name}{category.is_active ? '' : ' (hidden)'}</option>)}
           </select>
@@ -236,9 +258,10 @@ export default function ProductForm({ product, categories, mode }: Props) {
       <fieldset className="border border-line p-4 sm:p-5">
         <legend className="t-meta px-2">Inventory</legend>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
-          <input type="checkbox" checked={inventoryEnabled} onChange={event => setInventoryEnabled(event.target.checked)} className="h-4 w-4" />
+          <input type="checkbox" checked={inventoryEnabled} disabled={form.is_active || colors.length > 0} onChange={event => setInventoryEnabled(event.target.checked)} className="h-4 w-4" />
           <span className="text-sm text-ink">Track stock by selected color and size</span>
         </label>
+        {(form.is_active || colors.length > 0) && <p className="mt-1 text-xs text-ink-dim">Stock options are required for active products and products with colors.</p>}
         {inventoryEnabled && (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[30rem] text-sm">
@@ -270,7 +293,10 @@ export default function ProductForm({ product, categories, mode }: Props) {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
         {[{ key: 'is_featured', label: 'Featured product' }, { key: 'is_active', label: 'Active (visible)' }].map(({ key, label }) => (
-          <label key={key} className="flex min-h-11 cursor-pointer items-center gap-3"><input type="checkbox" checked={form[key as 'is_featured' | 'is_active']} onChange={event => set(key, event.target.checked)} className="h-4 w-4" /><span className="text-sm text-ink-dim">{label}</span></label>
+          <label key={key} className="flex min-h-11 cursor-pointer items-center gap-3"><input type="checkbox" checked={form[key as 'is_featured' | 'is_active']} onChange={event => {
+            set(key, event.target.checked)
+            if (key === 'is_active' && event.target.checked) setInventoryEnabled(true)
+          }} className="h-4 w-4" /><span className="text-sm text-ink-dim">{label}</span></label>
         ))}
       </div>
 

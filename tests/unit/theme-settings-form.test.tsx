@@ -42,12 +42,19 @@ describe('ThemeSettingsForm', () => {
     await user.click(screen.getByRole('radio', { name: /ramadan/i }))
     await user.click(screen.getByRole('button', { name: /apply theme/i }))
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/admin/settings/theme', {
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/settings/theme', expect.objectContaining({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: 'ramadan' }),
+    }))
+    const request = fetchMock.mock.calls[0][1] as { body: string }
+    expect(JSON.parse(request.body)).toMatchObject({
+      theme: 'ramadan',
+      schedules: [
+        { theme: 'christmas', animation_intensity: 'medium', is_enabled: false },
+        { theme: 'ramadan', animation_intensity: 'medium', is_enabled: false },
+      ],
     })
-    expect(await screen.findByRole('status')).toHaveTextContent('Ramadan is now live.')
+    expect(await screen.findByRole('status')).toHaveTextContent('Ramadan is now live')
     expect(h.refresh).toHaveBeenCalledTimes(1)
   })
 })

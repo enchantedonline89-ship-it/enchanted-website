@@ -10,6 +10,7 @@ import {
   ChartLineUp,
   Percent,
   Palette,
+  ShieldCheck,
   SignOut,
   X,
   ArrowSquareOut,
@@ -27,6 +28,7 @@ const navItems = [
   { label: 'Analytics', href: '/admin/dashboard#analytics', Icon: ChartLineUp },
   { label: 'Events & discounts', href: '/admin/promotions', Icon: Percent },
   { label: 'Appearance', href: '/admin/settings', Icon: Palette },
+  { label: 'Staff & security', href: '/admin/staff', Icon: ShieldCheck },
 ]
 
 interface AdminSidebarProps {

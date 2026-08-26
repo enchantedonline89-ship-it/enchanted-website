@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { List, X, Bag, User as UserIcon } from "@phosphor-icons/react/ssr"
 import Logo from "./Logo"
@@ -12,9 +12,9 @@ import { useOverlay } from "@/lib/use-overlay"
 import { useAuth } from "@/lib/auth-context"
 
 const LINKS = [
-  { href: "/#catalog", label: "Shop" },
-  { href: "/#story", label: "Story" },
+  { href: "/#catalog", label: "Shop All" },
   { href: "/size-guide", label: "Sizes" },
+  { href: "/track-order", label: "Track order" },
   { href: "/contact", label: "Contact" },
 ]
 
@@ -24,8 +24,36 @@ export default function Navbar() {
   const { totalItems, openCart } = useCart()
   const { user, loading, signOut } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
 
   const isAdmin = user?.role === 'admin'
+
+  useEffect(() => {
+    const syncAuthRequest = () => {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('auth') === '1') setAuthOpen(true)
+    }
+    syncAuthRequest()
+    window.addEventListener('popstate', syncAuthRequest)
+    return () => window.removeEventListener('popstate', syncAuthRequest)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!user) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('auth') !== '1') return
+    const target = params.get('returnTo')
+    router.replace(target?.startsWith('/') && !target.startsWith('//') ? target : '/')
+  }, [user, router])
+
+  function closeAuth() {
+    setAuthOpen(false)
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('auth') !== '1') return
+    url.searchParams.delete('auth')
+    url.searchParams.delete('returnTo')
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }
 
   // Close the drawer when the route changes, adjusted during render rather than
   // in an effect so navigation does not cost an extra commit.
@@ -169,7 +197,13 @@ export default function Navbar() {
                 <li key={link.href} className="border-b border-line">
                   <Link
                     href={link.href}
-                    onClick={() => setDrawerOpen(false)}
+                    onClick={(event) => {
+                      // Closing makes the drawer inert; navigate explicitly so
+                      // the browser cannot lose a same-page hash activation.
+                      event.preventDefault()
+                      router.push(link.href)
+                      setDrawerOpen(false)
+                    }}
                     className="block py-5 text-2xl tracking-tight text-ink"
                     style={{ fontVariationSettings: '"wdth" 108, "wght" 500' }}
                   >
@@ -217,7 +251,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <AuthModal open={authOpen} onClose={closeAuth} />
     </>
   )
 }

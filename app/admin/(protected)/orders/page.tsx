@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getD1Database } from '@/lib/cloudflare/d1'
+import { expirePendingOrders } from '@/lib/orders/maintenance'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,7 @@ export default async function AdminOrdersPage({
   const requested = (await searchParams).view ?? 'unconfirmed'
   const filter = FILTERS.find((entry) => entry.id === requested) ?? FILTERS[0]
   const db = await getD1Database()
+  if (db) await expirePendingOrders(db)
   const result = db
     ? await db.prepare(
         `SELECT id, order_number, recipient_name, phone_e164, city, area,

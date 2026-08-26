@@ -10,6 +10,9 @@ import { productHref } from "@/lib/product-url"
 import type { Product, SizeSystem } from "@/types"
 import ProductColorPicker from "./ProductColorPicker"
 import { productOptionState } from "./product-options"
+import { useProductSelection } from "./ProductSelectionProvider"
+import { captureCommerceEvent } from "@/components/analytics/commerce"
+import { captureRecommendationAdd } from "@/components/analytics/RecommendationTracker"
 
 const FIT_COPY: Record<string, string> = {
   size_up: "This style runs small. We recommend taking one size up.",
@@ -28,7 +31,10 @@ export default function ProductBuyBox({
 
   // Never preselected. A preselected size is a wrong-size-order generator, and
   // a wrong size here costs the owner the item and both delivery legs.
-  const [colorId, setColorId] = useState<string | null>(null)
+  const [localColorId, setLocalColorId] = useState<string | null>(null)
+  const sharedSelection = useProductSelection(product.id)
+  const colorId = sharedSelection?.colorId ?? localColorId
+  const setColorId = sharedSelection?.setColorId ?? setLocalColorId
   const [size, setSize] = useState<string | null>(null)
   const [needsColor, setNeedsColor] = useState(false)
   const [needsSize, setNeedsSize] = useState(false)
@@ -57,6 +63,14 @@ export default function ProductBuyBox({
     addToCart(product, options.requiresSize ? size : null, {
       selectedColor: options.selectedColor,
       selectedVariantId: options.selectedVariant?.id ?? null,
+    })
+    captureRecommendationAdd(product.id)
+    captureCommerceEvent('product_added', {
+      product_id: product.id,
+      category_id: product.category_id,
+      price: product.price,
+      has_color: Boolean(options.selectedColor),
+      has_size: Boolean(size),
     })
     setNeedsColor(false)
     setNeedsSize(false)
@@ -206,7 +220,7 @@ export default function ProductBuyBox({
           <dt>Returns</dt>
           <dd className="tnum text-right text-ink">
             <Link href="/returns" className="link-grow inline-flex min-h-11 items-center">
-              10 days, unworn with tags
+              See current return process
             </Link>
           </dd>
         </div>

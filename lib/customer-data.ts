@@ -1,3 +1,8 @@
+import {
+  readBoundedJsonObject as readJsonObject,
+  RequestBodyTooLargeError,
+} from '@/lib/request-body'
+
 const MAX_JSON_BYTES = 16_384
 export const MAX_ACTIVE_ADDRESSES = 10
 
@@ -266,36 +271,12 @@ export async function readBoundedJsonObject(request: Request): Promise<Record<st
     throw new CustomerDataError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Send this request as JSON.')
   }
 
-  const declaredLength = Number(request.headers.get('content-length'))
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BYTES) {
-    throw new CustomerDataError(413, 'PAYLOAD_TOO_LARGE', 'The request is too large.')
-  }
-
-  if (!request.body) throw new CustomerDataError(400, 'INVALID_JSON', 'A JSON object is required.')
-  const reader = request.body.getReader()
-  const chunks: Uint8Array[] = []
-  let total = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.byteLength
-    if (total > MAX_JSON_BYTES) {
-      await reader.cancel()
+  try {
+    return await readJsonObject(request, MAX_JSON_BYTES)
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
       throw new CustomerDataError(413, 'PAYLOAD_TOO_LARGE', 'The request is too large.')
     }
-    chunks.push(value)
-  }
-
-  const bytes = new Uint8Array(total)
-  let offset = 0
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-
-  try {
-    return asRecord(JSON.parse(new TextDecoder().decode(bytes)))
-  } catch (error) {
     if (error instanceof CustomerDataError) throw error
     throw new CustomerDataError(400, 'INVALID_JSON', 'The request body is not valid JSON.')
   }

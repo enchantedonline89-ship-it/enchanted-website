@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 }
 
 export default async function AccountAddressesPage() {
-  const session = await requireCustomer()
+  const session = await requireCustomer('/account/addresses')
   const db = await getD1Database()
   if (!db) throw new Error('Account storage is temporarily unavailable.')
 

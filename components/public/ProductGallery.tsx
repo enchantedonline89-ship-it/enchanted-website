@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import ImageLightbox from "./ImageLightbox"
 import type { Product } from "@/types"
+import { useProductSelection } from "./ProductSelectionProvider"
 
 /**
  * Scroll-snap gallery. No carousel library, no dots, never auto-advances.
@@ -13,13 +14,25 @@ import type { Product } from "@/types"
  * lightbox at the frame you were looking at.
  */
 export default function ProductGallery({ product }: { product: Product }) {
-  const images = [product.image_url, ...(product.additional_images ?? [])].filter(
-    Boolean,
-  ) as string[]
+  const selection = useProductSelection(product.id)
+  const selectedColor = product.colors?.find((color) => color.id === selection?.colorId)
+  const images = Array.from(new Set([
+    selectedColor?.image_url,
+    product.image_url,
+    ...(product.additional_images ?? []),
+  ].filter(Boolean))) as string[]
 
   const trackRef = useRef<HTMLUListElement>(null)
   const [index, setIndex] = useState(0)
   const [lightboxAt, setLightboxAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setIndex(0)
+      if (trackRef.current) trackRef.current.scrollLeft = 0
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [selection?.colorId])
 
   function onScroll() {
     const el = trackRef.current
@@ -97,7 +110,7 @@ export default function ProductGallery({ product }: { product: Product }) {
       </ul>
 
       <ImageLightbox
-        product={lightboxAt === null ? null : product}
+        product={lightboxAt === null ? null : { ...product, image_url: images[0], additional_images: images.slice(1) }}
         initialIndex={lightboxAt ?? 0}
         onClose={() => setLightboxAt(null)}
       />

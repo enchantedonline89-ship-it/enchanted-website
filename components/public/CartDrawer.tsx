@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { X, Minus, Plus, Trash, ArrowLeft, Check } from "@phosphor-icons/react/ssr"
@@ -10,6 +10,8 @@ import { useAuth } from "@/lib/auth-context"
 import AuthModal from "./AuthModal"
 import { pricePresentation } from "@/lib/promotions"
 import type { CustomerAddress } from "@/lib/customer-data"
+import CartRecommendations from "./CartRecommendations"
+import { captureCommerceEvent } from "@/components/analytics/commerce"
 
 type DrawerState = "cart" | "auth-required" | "details" | "success"
 
@@ -33,6 +35,8 @@ export default function CartDrawer() {
   const [placing, setPlacing] = useState(false)
   const [placeError, setPlaceError] = useState<string | null>(null)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null)
+  const checkoutKey = useRef<string | null>(null)
   const whatsappUrl = "https://wa.me/96181492994"
 
   const subtotal = items.reduce(
@@ -124,12 +128,15 @@ export default function CartDrawer() {
       clearCart()
       setDrawerState("cart")
       setOrderNumber(null)
+      setConfirmedTotal(null)
+      checkoutKey.current = null
     }
     closeCart()
   }
 
   function startCheckout() {
     if (items.length === 0) return
+    captureCommerceEvent('checkout_started', { item_count: items.length, subtotal, total })
     setDrawerState(user ? "details" : "auth-required")
   }
 
@@ -148,6 +155,7 @@ export default function CartDrawer() {
     }
     setPlacing(true)
     setPlaceError(null)
+    checkoutKey.current ??= crypto.randomUUID()
 
     const orderItems = items.map((item) => ({
       product_id: item.product.id,
@@ -176,7 +184,7 @@ export default function CartDrawer() {
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": checkoutKey.current },
         body: JSON.stringify(payload),
       })
       const responseBody: unknown = await res.json()
@@ -201,6 +209,12 @@ export default function CartDrawer() {
             ? data.id
             : null,
       )
+      setConfirmedTotal(typeof data.total === "number" ? data.total : total)
+      captureCommerceEvent('order_submitted', {
+        item_count: items.length,
+        total: typeof data.total === "number" ? data.total : total,
+        payment_method: 'cash_on_delivery',
+      })
 
       setDrawerState("success")
     } catch {
@@ -234,6 +248,8 @@ export default function CartDrawer() {
 
         <div
           ref={dialogRef}
+          data-sensitive
+          data-ph-no-capture
           tabIndex={-1}
           role="dialog"
           aria-modal="true"
@@ -361,7 +377,7 @@ export default function CartDrawer() {
                           </div>
                           {pricePresentation(item.product).discountPercent != null && (
                             <p className="mt-2 text-[0.6875rem] text-signal-ok">
-                              {pricePresentation(item.product).discountPercent}% event discount applied
+                              {pricePresentation(item.product).discountPercent}% off — best active discount applied
                             </p>
                           )}
                         </div>
@@ -379,6 +395,12 @@ export default function CartDrawer() {
                         </button>
                       </li>
                     ))}
+                    <li className="px-5 pb-5">
+                      <CartRecommendations
+                        sourceProductId={items[0]?.product.id ?? null}
+                        onNavigate={handleClose}
+                      />
+                    </li>
                   </ul>
                 )}
               </div>
@@ -538,7 +560,8 @@ export default function CartDrawer() {
               <p className="mt-5 text-xl text-ink">Order saved.</p>
               <p className="t-body mt-3 text-[0.9375rem]">
                 Your order is awaiting confirmation. We sent the order number to your
-                email and will email you again whenever its status changes.
+                email and will email you again whenever its status changes. Stock is
+                reserved for 24 hours while the order awaits confirmation.
               </p>
 
               <dl className="mt-6 flex flex-col gap-2 border-t border-line pt-4 text-[0.875rem]">
@@ -550,7 +573,7 @@ export default function CartDrawer() {
                 )}
                 <div className="flex justify-between">
                   <dt className="text-ink-dim">Total due</dt>
-                  <dd className="tnum text-ink">{money(total)}</dd>
+                  <dd className="tnum text-ink">{money(confirmedTotal ?? total)}</dd>
                 </div>
               </dl>
 
@@ -577,6 +600,8 @@ export default function CartDrawer() {
                     clearCart()
                     setDrawerState("cart")
                     setOrderNumber(null)
+                    setConfirmedTotal(null)
+                    checkoutKey.current = null
                     closeCart()
                   }}
                   className="btn btn-ghost w-full"

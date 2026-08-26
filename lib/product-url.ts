@@ -1,4 +1,4 @@
-import type { Product } from '@/types'
+import type { Category, Product } from '@/types'
 
 /**
  * Product URLs are `/product/<name-slug>-<first 6 of id>`.
@@ -31,6 +31,10 @@ export function productHref(product: Pick<Product, 'id' | 'name'>): string {
   return `/product/${productSlug(product)}`
 }
 
+export function categoryHref(category: Pick<Category, 'slug'>): string {
+  return `/category/${category.slug}`
+}
+
 /** Everything after the last hyphen: the id fragment. */
 export function refFromSlug(slug: string): string {
   return (slug.split('-').pop() ?? '').toLowerCase()
@@ -44,9 +48,8 @@ function refOf(product: Pick<Product, 'id'>): string {
  * Match on the full slug first, then fall back to the id fragment alone so a
  * renamed product still resolves from a link someone shared months ago.
  *
- * No length assumption about the fragment: real rows use UUIDs, but the mock
- * catalog uses short ids like `p-7`, and a hard-coded six-character check would
- * 404 the entire preview.
+ * No length assumption about the fragment, so imported identifiers continue to
+ * resolve even when they are not UUIDs.
  */
 export function findBySlug<T extends Pick<Product, 'id' | 'name'>>(
   products: T[],

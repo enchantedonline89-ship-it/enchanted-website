@@ -48,7 +48,13 @@ function request(theme: unknown) {
   return new NextRequest('https://shop.example/api/admin/settings/theme', {
     method: 'PATCH',
     headers: { 'content-type': 'application/json', origin: 'https://shop.example' },
-    body: JSON.stringify({ theme }),
+    body: JSON.stringify({
+      theme,
+      schedules: [
+        { theme: 'christmas', starts_at: null, ends_at: null, animation_intensity: 'medium', campaign_copy: 'Christmas', is_enabled: false },
+        { theme: 'ramadan', starts_at: null, ends_at: null, animation_intensity: 'medium', campaign_copy: 'Ramadan', is_enabled: false },
+      ],
+    }),
   })
 }
 
@@ -66,11 +72,13 @@ describe('admin theme settings route', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ theme: 'christmas' })
     const batch = h.db.batch.mock.calls[0][0]
-    expect(batch).toHaveLength(2)
+    expect(batch).toHaveLength(4)
     expect(batch[0].sql).toMatch(/INSERT INTO site_settings/i)
     expect(batch[0].bindings).toContain('christmas')
-    expect(batch[1].sql).toMatch(/INSERT INTO admin_audit_logs/i)
-    expect(batch[1].bindings).toContain('owner@example.com')
+    expect(batch[1].sql).toMatch(/INSERT INTO theme_schedules/i)
+    expect(batch[2].sql).toMatch(/INSERT INTO theme_schedules/i)
+    expect(batch[3].sql).toMatch(/INSERT INTO admin_audit_logs/i)
+    expect(batch[3].bindings).toContain('owner@example.com')
     expect(h.revalidateTag).toHaveBeenCalledWith('site-settings', 'max')
     expect(h.revalidatePath).toHaveBeenCalledWith('/', 'layout')
   })

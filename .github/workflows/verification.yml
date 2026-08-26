@@ -76,8 +76,11 @@ jobs:
       - name: Run Vitest suite
         run: npm test
 
-      - name: Compile and list Playwright specifications
-        run: ./node_modules/.bin/playwright test --list
+      - name: Install Playwright Chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Run desktop, mobile, and tablet browser checks
+        run: npm run test:e2e
 
       - name: Validate Cloudflare binding types
         run: ./node_modules/.bin/wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts

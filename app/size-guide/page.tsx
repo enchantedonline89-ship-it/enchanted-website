@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     url: '/size-guide',
     siteName: SITE_NAME,
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_LB',
   },
   twitter: {
     card: 'summary_large_image',

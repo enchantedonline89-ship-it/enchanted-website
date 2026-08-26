@@ -11,12 +11,14 @@ import ProductCard from "@/components/public/ProductCard"
 import JsonLd from "@/components/seo/JsonLd"
 import BreadcrumbJsonLd from "@/components/seo/BreadcrumbJsonLd"
 import { SITE_NAME, absoluteUrl } from "@/components/seo/site"
-import { findBySlug, productHref } from "@/lib/product-url"
+import { categoryHref, findBySlug, productHref } from "@/lib/product-url"
 import { getCatalog } from "@/lib/catalog"
 import type { SizeSystem } from "@/types"
 import ProductPrice from "@/components/public/ProductPrice"
 import { getD1Database } from "@/lib/cloudflare/d1"
 import { getRecommendationIds } from "@/lib/recommendations"
+import { ProductSelectionProvider } from "@/components/public/ProductSelectionProvider"
+import RecommendationTracker from "@/components/analytics/RecommendationTracker"
 
 export const revalidate = 3600
 
@@ -40,6 +42,7 @@ export async function generateMetadata({
   if (!found) return { title: "Piece not found" }
 
   const { product } = found
+  const image = product.image_url ? absoluteUrl(product.image_url) : null
   const description =
     product.description ??
     `${product.name} from Enchanted Style. Cash on delivery anywhere in Lebanon.`
@@ -52,15 +55,15 @@ export async function generateMetadata({
     openGraph: {
       title: product.name,
       description,
-      url: productHref(product),
+      url: absoluteUrl(productHref(product)),
       type: "website",
-      images: product.image_url ? [{ url: product.image_url }] : undefined,
+      images: image ? [{ url: image }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
       title: product.name,
       description,
-      images: product.image_url ? [product.image_url] : undefined,
+      images: image ? [image] : undefined,
     },
   }
 }
@@ -75,6 +78,8 @@ export default async function ProductPage({
   if (!found) return notFound()
 
   const { product, category, products, source } = found
+  const inStock = product.is_active && (!product.inventory_tracked
+    || (product.variants ?? []).some(variant => variant.is_active && variant.in_stock))
   const sizeSystem: SizeSystem = (category?.size_system as SizeSystem) ?? "none"
 
   // The learned ranking is fed only by delivered orders. A content-based,
@@ -114,7 +119,9 @@ export default async function ProductPage({
     sku: product.id,
     brand: { "@type": "Brand", name: SITE_NAME },
     ...(product.description ? { description: product.description } : {}),
-    image: [product.image_url, ...(product.additional_images ?? [])].filter(Boolean),
+    image: [product.image_url, ...(product.additional_images ?? [])]
+      .filter(Boolean)
+      .map(image => absoluteUrl(image as string)),
     ...(source === "live" && product.price != null
       ? {
           offers: {
@@ -123,7 +130,7 @@ export default async function ProductPage({
             price: product.price.toFixed(2),
             priceCurrency: "USD",
             seller: { "@type": "Organization", "@id": `${absoluteUrl("/")}#organization` },
-            availability: product.is_active
+            availability: inStock
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
           },
@@ -136,13 +143,14 @@ export default async function ProductPage({
       {source === "live" && <JsonLd data={jsonLd} />}
       <BreadcrumbJsonLd
         items={[
-          ...(category ? [{ name: category.name, path: `/#catalog` }] : []),
+          ...(category ? [{ name: category.name, path: categoryHref(category) }] : []),
           { name: product.name, path: productHref(product) },
         ]}
       />
       <Navbar />
 
       <main id="main" className="pt-[68px]">
+        <ProductSelectionProvider productId={product.id}>
         <div className="mx-auto max-w-[1440px] lg:grid lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-14">
           <div className="lg:min-w-0">
             <ProductGallery product={product} />
@@ -174,7 +182,7 @@ export default async function ProductPage({
 
             {category && (
               <p className="t-meta mt-2">
-                <Link href={`/#catalog`} className="link-grow">
+                <Link href={categoryHref(category)} className="link-grow">
                   {category.name}
                 </Link>
               </p>
@@ -210,21 +218,26 @@ export default async function ProductPage({
               </summary>
               <div className="prose-paper mt-4 text-[0.875rem]">
                 <p>
-                  Delivery is $4 anywhere in Lebanon. It usually takes 1 to 3 business
-                  days in Beirut and 2 to 5 elsewhere. You pay the driver in cash when
-                  it arrives.
+                  Delivery is $4 anywhere in Lebanon, and you pay the driver in cash.
+                  Delivery timing varies by destination.
                 </p>
                 <p>
-                  You have 10 days from receipt to return anything unworn and unwashed
-                  with its tags attached. Full terms are on the{" "}
+                  Keep the item unworn with its tags attached if you may need a return.
+                  The current process is on the{" "}
                   <Link href="/returns">returns page</Link>.
                 </p>
               </div>
             </details>
           </div>
         </div>
+        </ProductSelectionProvider>
 
         {related.length > 0 && (
+          <RecommendationTracker
+            sourceProductId={product.id}
+            recommendedProductIds={related.map(candidate => candidate.id)}
+            placement="pdp"
+          >
           <section
             aria-labelledby="related-heading"
             className="border-t border-line px-5 py-16 lg:px-10 lg:py-20"
@@ -235,7 +248,7 @@ export default async function ProductPage({
               </h2>
               <ul className="mt-10 grid grid-cols-2 gap-x-4 gap-y-12 md:grid-cols-4 md:gap-x-6">
                 {related.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.id} data-recommendation-id={p.id}>
                     {/* Link only. Adding an unseen piece to the cart from a strip
                         is exactly the wrong-size order this page exists to stop. */}
                     <ProductCard product={p} linkOnly />
@@ -244,6 +257,7 @@ export default async function ProductPage({
               </ul>
             </div>
           </section>
+          </RecommendationTracker>
         )}
       </main>
 

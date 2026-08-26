@@ -68,6 +68,38 @@ describe('Cloudflare D1 migration contracts', () => {
     expect(emailEvents).toMatch(/provider_event_id\s+TEXT\s+NOT NULL\s+UNIQUE/i)
   })
 
+  it('enforces replay-safe checkout, unique variant lines, and 24-hour expiry metadata', () => {
+    const sql = migrations()
+    const orders = tableDefinition(sql, 'orders')
+
+    expect(sql).toMatch(/checkout_idempotency_key/i)
+    expect(sql).toMatch(/UNIQUE INDEX[\s\S]+orders\s*\(user_id, checkout_idempotency_key\)/i)
+    expect(sql).toMatch(/UNIQUE INDEX[\s\S]+order_items\s*\(order_id, variant_id\)/i)
+    expect(sql).toMatch(/pending_expires_at/i)
+    expect(sql).toMatch(/coalesce\s*\(\s*sum\s*\(oi\.quantity\)/i)
+    expect(orders).toContain('status')
+  })
+
+  it('adds separate owner/admin metadata and the Better Auth TOTP schema', () => {
+    const sql = migrations()
+
+    expect(sql).toMatch(/adminRole[\s\S]+owner[\s\S]+admin/i)
+    expect(sql).toMatch(/twoFactorEnabled/i)
+    expect(sql).toMatch(/CREATE TABLE IF NOT EXISTS "twoFactor"/i)
+    expect(sql).toMatch(/failedVerificationCount/i)
+    expect(sql).toMatch(/lockedUntil/i)
+  })
+
+  it('stores bounded holiday schedules with explicit intensity and active windows', () => {
+    const schedules = tableDefinition(migrations(), 'theme_schedules')
+
+    expect(schedules).toMatch(/theme\s+TEXT\s+PRIMARY KEY/i)
+    expect(schedules).toMatch(/christmas[\s\S]+ramadan/i)
+    expect(schedules).toMatch(/animation_intensity[\s\S]+low[\s\S]+medium[\s\S]+high/i)
+    expect(schedules).toMatch(/length\(campaign_copy\)\s*<=\s*120/i)
+    expect(schedules).toMatch(/starts_at\s+IS NOT NULL[\s\S]+ends_at\s+IS NOT NULL/i)
+  })
+
   it('keeps direct contact data out of recommendation events', () => {
     const events = tableDefinition(migrations(), 'recommendation_events')
 

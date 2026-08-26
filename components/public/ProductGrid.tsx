@@ -47,12 +47,12 @@ export default function ProductGrid({
         {visible.length === 0 ? (
           <div className="flex flex-col items-start gap-4 py-24">
             <p className="t-section text-ink-dim">
-              {unavailable ? "The catalog is temporarily unavailable." : "Nothing in here yet."}
+              {unavailable ? "The catalog is temporarily unavailable." : "New pieces are coming soon."}
             </p>
             <p className="t-body">
               {unavailable
                 ? "Please try again shortly or message us on WhatsApp for current availability."
-                : "This category has no pieces in stock right now. New arrivals land most weeks, so try another category or check back shortly."}
+                : "The owner is preparing the first collection. Check back soon."}
             </p>
             {!unavailable && active !== "all" && (
               <button onClick={() => setActive("all")} className="btn btn-ghost mt-2">

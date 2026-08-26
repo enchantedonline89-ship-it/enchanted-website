@@ -1,8 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  ANALYTICS_CONSENT_KEY,
+  setAnalyticsConsent,
+} from '@/components/analytics/consent'
 
-export const ANALYTICS_CONSENT_KEY = 'enchanted_analytics_consent'
+export { ANALYTICS_CONSENT_KEY } from '@/components/analytics/consent'
 
 export default function ConsentBanner() {
   const [visible, setVisible] = useState(false)
@@ -19,16 +23,21 @@ export default function ConsentBanner() {
   }, [])
 
   function decide(allowed: boolean) {
-    try {
-      window.localStorage.setItem(ANALYTICS_CONSENT_KEY, allowed ? 'granted' : 'denied')
-    } catch {
-      // The custom event still applies the choice for the current page.
-    }
-    window.dispatchEvent(new CustomEvent('enchanted:analytics-consent', { detail: allowed }))
+    setAnalyticsConsent(allowed)
     setVisible(false)
   }
 
-  if (!visible) return null
+  if (!visible) {
+    return (
+      <button
+        type="button"
+        onClick={() => setVisible(true)}
+        className="fixed bottom-3 left-3 z-[99] border border-line bg-paper-raised px-3 py-2 text-xs text-ink-dim shadow-sm hover:text-ink"
+      >
+        Privacy choices
+      </button>
+    )
+  }
   return (
     <aside
       aria-label="Analytics choice"

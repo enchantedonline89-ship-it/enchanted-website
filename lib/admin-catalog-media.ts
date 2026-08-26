@@ -49,6 +49,10 @@ export function isCatalogMediaKey(value: string): boolean {
   return /^products\/\d{4}-(?:0[1-9]|1[0-2])\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/i.test(value)
 }
 
+export function catalogMediaUrl(key: string): string {
+  return `/media/${key}`
+}
+
 export async function getCatalogMediaBucket(): Promise<R2Bucket | null> {
   try {
     const { env } = await getCloudflareContext({ async: true })

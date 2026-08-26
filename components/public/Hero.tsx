@@ -18,7 +18,7 @@ import type { ReactNode } from "react"
  */
 export default function Hero({ visual }: { visual?: ReactNode }) {
   return (
-    <section className="relative flex flex-col overflow-hidden bg-paper lg:min-h-[88dvh] lg:justify-center">
+    <section className="seasonal-hero relative flex flex-col overflow-hidden bg-paper lg:min-h-[88dvh] lg:justify-center">
       {/* One responsive LCP image. It is in flow after the copy on phones and
           becomes an absolute right-hand composition on desktop. */}
       <div

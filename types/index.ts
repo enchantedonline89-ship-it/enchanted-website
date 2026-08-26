@@ -83,6 +83,22 @@ export interface Product {
 }
 
 export type SiteTheme = 'default' | 'christmas' | 'ramadan'
+export type ThemeIntensity = 'low' | 'medium' | 'high'
+
+export interface ThemeSchedule {
+  theme: Exclude<SiteTheme, 'default'>
+  starts_at: string | null
+  ends_at: string | null
+  animation_intensity: ThemeIntensity
+  campaign_copy: string
+  is_enabled: boolean
+}
+
+export interface SiteThemeConfig {
+  theme: SiteTheme
+  intensity: ThemeIntensity
+  campaignCopy: string
+}
 
 export interface SiteSettings {
   id: 'storefront'

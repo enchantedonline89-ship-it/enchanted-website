@@ -4,8 +4,7 @@ import Logo from "./Logo"
 import { WHATSAPP_FLOAT_URL } from "@/lib/whatsapp"
 
 const SHOP = [
-  { href: "/#catalog", label: "Catalog" },
-  { href: "/#new", label: "Just arrived" },
+  { href: "/#catalog", label: "Shop All" },
   { href: "/size-guide", label: "Size guide" },
   { href: "/orders", label: "Your orders" },
 ]
@@ -32,8 +31,8 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Logo size="lg" />
             <p className="t-body mt-5 max-w-[34ch] text-[0.9375rem]">
-              Women&apos;s fashion curated in Lebanon. Order here, confirm on WhatsApp,
-              and pay the driver when it arrives.
+              Women&apos;s fashion for Lebanon. Place your order here, receive updates
+              by email, and contact us on WhatsApp if you need help.
             </p>
             <div className="mt-6 flex items-center gap-3">
               <a

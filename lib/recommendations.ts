@@ -3,6 +3,13 @@ const MIN_COLLABORATIVE_SUPPORT = 3
 
 type ProductSignal = { id: string; category_id: string | null; tags_json: string }
 type DeliveredLine = { order_id: string; product_id: string }
+type EngagementRow = {
+  source_product_id: string
+  recommended_product_id: string
+  impressions: number
+  clicks: number
+  adds: number
+}
 
 function tags(row: ProductSignal): Set<string> {
   try {
@@ -19,6 +26,18 @@ function jaccard(left: Set<string>, right: Set<string>): number {
   return intersection / new Set([...left, ...right]).size
 }
 
+export function recommendationEngagementScore(
+  impressions: number,
+  clicks: number,
+  adds: number,
+): number {
+  return Math.min(
+    1,
+    ((Math.max(clicks, 0) + 1) / (Math.max(impressions, 0) + 10)) * 0.35
+      + ((Math.max(adds, 0) + 1) / (Math.max(impressions, 0) + 20)) * 0.65,
+  )
+}
+
 async function batches(db: D1Database, statements: D1PreparedStatement[]) {
   for (let index = 0; index < statements.length; index += 50) {
     await db.batch(statements.slice(index, index + 50))
@@ -31,7 +50,7 @@ async function batches(db: D1Database, statements: D1PreparedStatement[]) {
  * as a content-based similar style—not as social proof.
  */
 export async function rebuildRecommendationModel(db: D1Database): Promise<void> {
-  const [productRows, deliveredRows] = await Promise.all([
+  const [productRows, deliveredRows, engagementRows] = await Promise.all([
     db.prepare(
       `SELECT id, category_id, tags_json FROM products WHERE is_active = 1`,
     ).all<ProductSignal>(),
@@ -40,6 +59,16 @@ export async function rebuildRecommendationModel(db: D1Database): Promise<void> 
        FROM order_items oi JOIN orders o ON o.id = oi.order_id
        WHERE o.status = 'delivered' AND oi.product_id IS NOT NULL`,
     ).all<DeliveredLine>(),
+    db.prepare(
+      `SELECT source_product_id, recommended_product_id,
+              sum(event_type = 'impression') AS impressions,
+              sum(event_type = 'click') AS clicks,
+              sum(event_type = 'add_to_cart') AS adds
+       FROM recommendation_events
+       WHERE source_product_id IS NOT NULL
+         AND created_at >= datetime('now', '-90 days')
+       GROUP BY source_product_id, recommended_product_id`,
+    ).all<EngagementRow>(),
   ])
   const products = productRows.results
   if (!products.length) return
@@ -68,6 +97,12 @@ export async function rebuildRecommendationModel(db: D1Database): Promise<void> 
   const maxPopularity = Math.max(...productCounts.values(), 1)
   const now = new Date().toISOString()
   const tagSets = new Map(products.map((product) => [product.id, tags(product)]))
+  const engagement = new Map(
+    engagementRows.results.map((row) => [
+      `${row.source_product_id}\u0000${row.recommended_product_id}`,
+      row,
+    ]),
+  )
   const pairStatements: D1PreparedStatement[] = []
   const scoreStatements: D1PreparedStatement[] = []
 
@@ -86,10 +121,17 @@ export async function rebuildRecommendationModel(db: D1Database): Promise<void> 
       const content = (source.category_id && source.category_id === target.category_id ? 0.65 : 0)
         + jaccard(tagSets.get(source.id)!, tagSets.get(target.id)!) * 0.35
       const popularity = targetOrders / maxPopularity
+      const events = engagement.get(`${source.id}\u0000${target.id}`)
+      const impressions = Math.max(Number(events?.impressions ?? 0), 0)
+      const clicks = Math.max(Number(events?.clicks ?? 0), 0)
+      const adds = Math.max(Number(events?.adds ?? 0), 0)
+      // Smoothed rates stop one click in a tiny sample from outranking real
+      // delivered-order evidence while still improving cold-start ordering.
+      const behavioral = recommendationEngagementScore(impressions, clicks, adds)
       const hasEvidence = support >= MIN_COLLABORATIVE_SUPPORT
       const score = hasEvidence
-        ? collaborative * 0.55 + content * 0.30 + popularity * 0.10 + 0.025
-        : content * 0.80 + popularity * 0.15 + 0.025
+        ? collaborative * 0.55 + content * 0.25 + behavioral * 0.15 + popularity * 0.05
+        : content * 0.70 + behavioral * 0.20 + popularity * 0.10
 
       if (support > 0) {
         pairStatements.push(db.prepare(

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getD1Database } from '@/lib/cloudflare/d1'
+import { readBoundedJsonObject, RequestBodyTooLargeError } from '@/lib/request-body'
 
 const ORDER_NUMBER = /^ES-\d{4}-\d{6}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -39,10 +40,13 @@ export async function POST(request: Request) {
     return noStore({ error: 'Too many tracking attempts. Please try again in a minute.' }, 429)
   }
 
-  let body: { order_number?: unknown; email?: unknown }
+  let body: Record<string, unknown>
   try {
-    body = await request.json() as { order_number?: unknown; email?: unknown }
-  } catch {
+    body = await readBoundedJsonObject(request, 4096)
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return noStore({ error: 'Request body is too large.' }, 413)
+    }
     return noStore({ error: 'Enter a valid order number and email.' }, 400)
   }
 

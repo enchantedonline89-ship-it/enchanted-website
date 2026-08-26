@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     url: '/privacy',
     siteName: SITE_NAME,
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_LB',
   },
   twitter: {
     card: 'summary_large_image',
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <PageShell
         title="Privacy policy"
         standfirst="What we collect when you order, why we hold it, and how to have it removed."
-        meta="Last updated 21 August 2026"
+        meta="Last updated 26 August 2026"
       >
       <div>
         <section>
@@ -94,8 +94,9 @@ export default function PrivacyPage() {
           <p>
             Account, address, catalog and order records are stored in Cloudflare D1;
             product media is stored in Cloudflare R2. Transactional email is handled by
-            Resend. If you consent, PostHog processes product analytics and Sentry may
-            process masked diagnostic replays. We keep order records only as long as
+            Resend. Sentry processes essential error reports without form contents. If
+            you consent, PostHog processes product analytics and Sentry may process
+            masked diagnostic replays. We keep order records only as long as
             reasonably required for fulfilment, support and business record obligations.
           </p>
         </section>
@@ -116,10 +117,11 @@ export default function PrivacyPage() {
         <section>
           <h2>Cookies</h2>
           <p>
-            We use essential cookies for authentication. Only after you choose Allow analytics,
-            it also stores a first-party identifier in a cookie and local storage so we can
-            understand page visits and clicks. We do not use advertising cookies or sell
-            this data.
+            We use essential cookies for authentication. Only after you choose Allow analytics
+            do we store a first-party analytics identifier in a cookie and local storage so we
+            can understand page visits and clicks. Analytics and replay stay off on authentication,
+            account, checkout, order, tracking and admin routes. Use the persistent Privacy choices
+            button at any time to withdraw consent and clear the browser analytics identity.
           </p>
         </section>
 

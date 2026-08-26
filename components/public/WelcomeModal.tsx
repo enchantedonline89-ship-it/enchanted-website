@@ -22,8 +22,8 @@ const SLIDES = [
     body: "Delivery is $4 anywhere in Lebanon. At checkout, add the name, phone number and address needed for delivery.",
   },
   {
-    title: "We confirm on WhatsApp",
-    body: "Placing the order opens a chat with us. We reply to confirm stock and agree a delivery time with you.",
+    title: "We update you by email",
+    body: "Your order is saved on the site with a public order number. We email you when it is confirmed and as its status changes.",
   },
   {
     title: "Pay the driver",

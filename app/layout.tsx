@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { Suspense } from "react"
 import { Archivo, Cormorant_Garamond } from "next/font/google"
 import PostHogPageview from "@/components/analytics/PostHogPageview"
 import ConsentBanner from "@/components/analytics/ConsentBanner"
@@ -9,9 +8,9 @@ import { CartProvider } from "@/lib/cart-context"
 import { AuthProvider } from "@/lib/auth-context"
 import WelcomeModal from "@/components/public/WelcomeModal"
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd"
-import { SITE_URL, SITE_NAME } from "@/components/seo/site"
+import { absoluteUrl, SITE_URL, SITE_NAME } from "@/components/seo/site"
 import SiteThemeShell from "@/components/public/SiteThemeShell"
-import { getSiteTheme } from "@/lib/site-theme"
+import { getSiteThemeConfig } from "@/lib/site-theme"
 
 /* Archivo carries everything functional: prices, size chips, form labels. It is
    far more legible at those sizes than a display serif. */
@@ -34,7 +33,7 @@ const cormorant = Cormorant_Garamond({
 })
 
 const DESCRIPTION =
-  "Heels, boots, dresses, tops and accessories, curated in Lebanon. Cash on delivery, ordered over WhatsApp."
+  "Shop women's fashion online from Enchanted Style. $4 delivery across Lebanon and cash on delivery."
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -57,13 +56,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: SITE_NAME,
     description: DESCRIPTION,
-    url: "/",
+    url: SITE_URL,
     siteName: SITE_NAME,
     type: "website",
-    locale: "en_US",
+    locale: "en_LB",
     images: [
       {
-        url: "/brand/hero.webp",
+        url: absoluteUrl("/brand/hero.webp"),
         alt: "Enchanted Style women's fashion",
       },
     ],
@@ -72,7 +71,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_NAME,
     description: DESCRIPTION,
-    images: ["/brand/hero.webp"],
+    images: [absoluteUrl("/brand/hero.webp")],
   },
   icons: { icon: "/favicon.ico" },
 }
@@ -82,7 +81,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const siteTheme = await getSiteTheme()
+  const siteTheme = await getSiteThemeConfig()
 
   return (
     <html lang="en">
@@ -96,14 +95,10 @@ export default async function RootLayout({
           Skip to content
         </a>
         <OrganizationJsonLd />
-        {/* useSearchParams opts its subtree into client rendering, so the
-            pageview tracker is isolated behind its own Suspense boundary. */}
-        <Suspense fallback={null}>
-          <PostHogPageview />
-        </Suspense>
+        <PostHogPageview />
         <AuthProvider>
           <CartProvider>
-            <SiteThemeShell theme={siteTheme}>
+            <SiteThemeShell config={siteTheme}>
               <WelcomeModal />
               {children}
               <ConsentBanner />

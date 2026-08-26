@@ -4,7 +4,7 @@
   "main": "cloudflare-worker.ts",
   "workers_dev": true,
   "preview_urls": true,
-  "compatibility_date": "2026-08-21",
+  "compatibility_date": "2026-08-26",
   "compatibility_flags": [
     "nodejs_compat",
     "global_fetch_strictly_public"
@@ -21,6 +21,12 @@
   ],
   "images": {
     "binding": "IMAGES"
+  },
+  "triggers": {
+    "crons": [
+      "*/15 * * * *",
+      "17 2 * * *"
+    ]
   },
   "d1_databases": [
     {

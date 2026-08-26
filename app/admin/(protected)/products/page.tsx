@@ -3,6 +3,7 @@ import DeleteProductButton from './DeleteProductButton'
 import { requireAdmin } from '@/lib/auth/server'
 import { getD1Database } from '@/lib/cloudflare/d1'
 import { listAdminProducts } from '@/lib/admin-catalog'
+import ProductCsvImport from '@/components/admin/ProductCsvImport'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,8 @@ export default async function ProductsPage() {
           + Add Product
         </a>
       </div>
+
+      <ProductCsvImport />
 
       <div className="bg-paper-raised border border-line overflow-hidden">
         <div className="overflow-x-auto">

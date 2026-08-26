@@ -494,6 +494,37 @@ a {
   isolation: isolate;
 }
 
+.site-theme-root[data-theme-campaign="visible"] {
+  padding-top: 2rem;
+}
+
+.site-theme-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+}
+
+.seasonal-campaign-banner {
+  position: fixed;
+  inset: 68px 0 auto;
+  z-index: 54;
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-gold) 55%, transparent);
+  background: color-mix(in srgb, var(--color-paper-raised) 94%, transparent);
+  color: var(--color-ink);
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+}
+
 .site-theme-root[data-site-theme="christmas"] {
   --color-paper: rgba(255, 250, 246, 0.965);
   --color-paper-raised: rgba(255, 253, 249, 0.975);
@@ -532,6 +563,28 @@ a {
     radial-gradient(circle at 0 78%, rgba(215, 166, 75, 0.13), transparent 34rem),
     linear-gradient(150deg, #fffaf0 0%, #f5ecd9 55%, #fffaf1 100%);
   background-attachment: fixed;
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-hero {
+  background:
+    radial-gradient(circle at 4% 78%, rgba(141, 38, 53, 0.09), transparent 25rem),
+    radial-gradient(circle at 96% 12%, rgba(28, 70, 45, 0.1), transparent 27rem),
+    var(--color-paper);
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-hero {
+  background:
+    radial-gradient(circle at 96% 14%, rgba(20, 37, 68, 0.11), transparent 28rem),
+    linear-gradient(150deg, rgba(215, 166, 75, 0.04), transparent 62%),
+    var(--color-paper);
+}
+
+.site-theme-root[data-site-theme="christmas"] .seasonal-service-band {
+  background: rgba(28, 70, 45, 0.055);
+}
+
+.site-theme-root[data-site-theme="ramadan"] .seasonal-service-band {
+  background: rgba(20, 37, 68, 0.055);
 }
 
 .site-theme-root[data-site-theme="christmas"]::before,
@@ -614,7 +667,7 @@ a {
 }
 
 .site-theme-root[data-site-theme="christmas"] .seasonal-logo-accent {
-  top: -0.38rem;
+  top: 0.05rem;
   left: 0.08rem;
   display: block;
   width: 1.9rem;
@@ -657,7 +710,7 @@ a {
 }
 
 .site-theme-root[data-site-theme="ramadan"] .seasonal-logo-accent {
-  top: -0.48rem;
+  top: 0.08rem;
   right: -0.95rem;
   display: block;
   width: 1.9rem;
@@ -697,10 +750,25 @@ a {
 .seasonal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  /* Decorative motion belongs behind the storefront, never over product
+     photography, controls, or text. The isolated root keeps this local. */
+  z-index: 0;
   overflow: hidden;
   contain: strict;
   pointer-events: none;
+  opacity: 0.82;
+}
+
+.seasonal-backdrop[data-intensity="low"] { opacity: 0.5; }
+.seasonal-backdrop[data-intensity="high"] { opacity: 1; }
+.seasonal-backdrop[data-intensity="low"] .seasonal-snowflake:nth-child(n + 8),
+.seasonal-backdrop[data-intensity="low"] .seasonal-ramadan-star:nth-child(n + 6),
+.seasonal-backdrop[data-intensity="low"] .seasonal-ramadan-lantern:nth-child(n + 3) { display: none; }
+
+.seasonal-backdrop[data-intensity="high"] .seasonal-snowflake,
+.seasonal-backdrop[data-intensity="high"] .seasonal-ramadan-star,
+.seasonal-backdrop[data-intensity="high"] .seasonal-ramadan-lantern {
+  animation-duration: calc(var(--seasonal-duration, 7s) * 0.8);
 }
 
 .seasonal-backdrop__wash {
@@ -882,6 +950,8 @@ a {
 }
 
 @media (max-width: 480px) {
+  .site-theme-root[data-theme-campaign="visible"] { padding-top: 2.5rem; }
+  .seasonal-campaign-banner { min-height: 2.5rem; font-size: 0.625rem; }
   .seasonal-snowflake:nth-child(n + 8),
   .seasonal-ramadan-star:nth-child(n + 5) { display: none; }
   .seasonal-christmas-sprig { opacity: 0.2; }
@@ -896,6 +966,7 @@ a {
 
 @media print {
   .seasonal-backdrop,
+  .seasonal-campaign-banner,
   .site-theme-root[data-site-theme="christmas"]::before,
   .site-theme-root[data-site-theme="ramadan"]::before,
   .seasonal-logo-accent { display: none !important; }

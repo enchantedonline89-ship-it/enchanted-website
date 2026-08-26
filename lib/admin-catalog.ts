@@ -110,6 +110,12 @@ function imageUrl(value: unknown): ValidationResult<string | null> {
   if (value === undefined || value === null || value === '') return { ok: true, value: null }
   const text = trimmedString(value, 2048)
   if (!text) return { ok: false, error: 'Image URL is invalid.' }
+  if (text.startsWith('/media/')) {
+    const key = text.slice('/media/'.length)
+    return isCatalogMediaKey(key)
+      ? { ok: true, value: `/media/${key}` }
+      : { ok: false, error: 'Image URL is invalid.' }
+  }
   if (text.startsWith('/api/admin/media?')) {
     try {
       const url = new URL(text, 'https://catalog.invalid')
@@ -135,8 +141,11 @@ function mediaKeyFromImageUrl(value: string | null): string | null {
   if (!value) return null
   try {
     const url = new URL(value, 'https://catalog.invalid')
-    if (url.pathname !== '/api/admin/media') return null
-    const key = url.searchParams.get('key') ?? ''
+    const key = url.pathname.startsWith('/media/')
+      ? url.pathname.slice('/media/'.length)
+      : url.pathname === '/api/admin/media'
+        ? url.searchParams.get('key') ?? ''
+        : ''
     return isCatalogMediaKey(key) ? key : null
   } catch {
     return null
@@ -363,6 +372,15 @@ export function validateProductInput(input: unknown): ValidationResult<ProductIn
       stock = item.stock_quantity as number
     }
     variants.push({ color_ref: colorRef, size, sku: variantSku.value, stock_quantity: stock })
+  }
+
+  if (active.value) {
+    if (price.value === null) return { ok: false, error: 'Add a price before making this product active.' }
+    if (!categoryId) return { ok: false, error: 'Choose a category before making this product active.' }
+    if (!cover.value) return { ok: false, error: 'Add a cover photo before making this product active.' }
+    if (!variants.some((variant) => variant.stock_quantity === null || variant.stock_quantity > 0)) {
+      return { ok: false, error: 'Add at least one in-stock option before making this product active.' }
+    }
   }
 
   return {

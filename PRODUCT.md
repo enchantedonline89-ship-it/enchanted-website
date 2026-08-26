@@ -1,69 +1,74 @@
-# PRODUCT.md — Enchanted Style
+# Enchanted Style product truth
 
-Durable product truth. Visual decisions live in DESIGN.md, not here.
+## Store and customer
 
-## What this is
+Enchanted Style is a premium, accessible, trend-led women’s fashion store for
+customers in Lebanon. The launch storefront is English and prices are in USD.
+The public support number is +961 81 492 994. No business address is published.
 
-An online catalog for Enchanted Style (@enchanted.style_), a women's fashion and
-footwear brand in Lebanon. Customers browse, build a cart, and place the order
-through WhatsApp. There is no card checkout and no self-service payment.
+## Ordering
 
-## Who it is for
+1. A customer browses the real owner-managed catalog and chooses available
+   color and size variants.
+2. Checkout requires a verified Enchanted Style account and a saved Lebanon
+   delivery address.
+3. The site creates a pending order in Cloudflare D1 and shows its public order
+   number. The order appears immediately in the admin Unconfirmed queue.
+4. The shop confirms and advances the order through preparing, out for delivery,
+   delivered, or cancelled. Each accepted transition is recorded and emailed.
+5. Delivery costs $4 throughout Lebanon. Cash is collected on delivery. A
+   customer who wants to pay through Whish contacts the shop on WhatsApp first.
 
-Women in Lebanon, mostly arriving from Instagram on a phone, often in the evening.
-They already know the brand's feed. The site is where they see the full range,
-check sizes and prices, and hand an order to the owner without a payment barrier.
+Pending orders reserve stock for 24 hours, then cancel and restock automatically
+unless an administrator extends the reservation. Customers may cancel any time
+before delivery is recorded. Delivery-time and return/refund promises must not be
+invented; customer-facing copy remains conservative until the owner publishes
+the exact operating policy.
 
-## How an order actually works
+## Catalog and merchandising
 
-1. Browse the catalog, pick a size, add to cart.
-2. Sign in (Google or email) to attach the order to an account.
-3. Fill delivery details: name, phone, address, city, area.
-4. The order is written to the database, then opened as a prefilled WhatsApp
-   message to +961 81 492 994. The owner confirms and arranges delivery.
-5. Payment is cash on delivery.
+The launch database is intentionally empty. The owner creates categories and
+uploads real products after deployment. New products start as drafts and cannot
+be published without the required price, category, image, and sellable stock
+options. Every color and size is an explicit stock variant; there is no silent
+unlimited-stock default.
 
-Delivery is a flat $4 anywhere in Lebanon. This fee is validated server-side
-and must stay consistent everywhere.
+CSV import supports the initial catalog load. Discounts never stack: the best
+eligible site-wide or category discount is applied. Featured products, campaign
+copy, categories, stock, colors, and color-specific images are controlled by the
+admin panel.
 
-## Catalog shape
+## Accounts and administration
 
-Six categories: Heels & Stilettos, Boots & Ankle Boots, Sneakers, Dresses,
-Tops & Sets, Accessories. Clothing carries letter sizes, footwear carries EU
-numeric sizes, accessories carry no size. Prices sit roughly between $29 and $180.
+Customers can save and manage multiple Lebanon delivery addresses. Staff use
+separate identities with owner and admin permissions. Administrative access
+requires TOTP two-factor authentication; shared passwords are not an operational
+model. Audit records identify the staff account that changed orders, stock,
+campaigns, or settings.
 
-## Surfaces
+## Themes
 
-- **Storefront** (Persuade): home, catalog grid, cart drawer, auth, order history,
-  and the policy pages. Design is doing sales work here.
-- **Admin** (Operate): dashboard, products, categories, orders. One person, the
-  owner, using it to run the shop. Scanability beats expression.
+Default, Christmas, and Ramadan themes can be previewed, scheduled, or enabled
+manually. Holiday animation is decorative, reduced on small screens, disabled
+for reduced-motion users, and never tints product photography or form content.
 
-## Brand
+## Recommendations and analytics
 
-Supplied by the client, 2026-08-12. Colours are **white and gold**. The brand
-reads **feminine, romantic, elegant, timeless**.
+Recommendations start with category/tag similarity. Delivered-order basket
+co-occurrence is the strongest learning signal; consented anonymous impressions,
+clicks, and cart intent are weaker ranking signals. Social-proof wording appears
+only after enough delivered-order support exists.
 
-The mark is a gold script "Enchanted" over a gold serif "STYLE" with three
-stars, inside a double gold ring. Source artwork is a transparent PDF; the
-working assets extracted from it live in `public/brand/`. The client supplied
-both a gold-on-black and a gold-on-white lockup, and the site is built on white
-because gold only holds its champagne highlights against a light ground.
+PostHog analytics are consent-gated and immediately revocable. Replay is disabled
+on authentication, account, address, checkout, tracking, order, and admin routes.
+Sentry error reporting excludes request bodies and direct identifiers. Resend,
+Sentry, and PostHog health summaries appear in the admin dashboard when their
+production credentials are connected.
 
-`DESIGN.md` carries the consequence that governs every screen: the brand gold
-measures 1.69:1 against white and therefore cannot carry text. It is a fill and
-a rule. Gold that must be read is the logo's own shadow tone, `#7a5518`.
+## Platform
 
-## Constraints that are not negotiable
-
-- WhatsApp number `96181492994` lives only in `lib/whatsapp.ts`.
-- Admin authority is `process.env.ADMIN_EMAIL` server-side and the RLS policies
-  keyed on `LOWER(auth.email())`. Design never touches that gate.
-- Product photography comes from the owner. The design cannot assume studio
-  quality or a consistent background, so it must hold up with uneven source images.
-- Copy is English. Prices display in USD.
-
-## Known state, 2026-08-11
-
-The Supabase project `mnbdyiemlifvxvgobfwq` no longer resolves. Until a backend is
-reconnected, the storefront renders the mock catalog and auth/admin cannot sign in.
+The application runs on Cloudflare Workers through OpenNext. D1 is the
+transactional source of truth, R2 stores product media, Queues deliver email with
+durable retries, and Better Auth provides email/password and Google authentication.
+Secrets live in Cloudflare, never in source control. The final domain determines
+canonical SEO URLs, OAuth redirects, Turnstile hostnames, and email links.

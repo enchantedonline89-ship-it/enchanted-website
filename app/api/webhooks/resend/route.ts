@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Webhook } from 'svix'
 import { getCloudflareEnv } from '@/lib/cloudflare/env'
+import { readBoundedText, RequestBodyTooLargeError } from '@/lib/request-body'
 
 type ResendEvent = {
   type: string
@@ -21,18 +22,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  let rawBody: string
   try {
-    const rawBody = await request.text()
-    const event = new Webhook(env.RESEND_WEBHOOK_SECRET).verify(rawBody, {
+    rawBody = await readBoundedText(request, 65_536)
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: 'Request body is too large' }, { status: 413 })
+    }
+    return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
+  }
+
+  let event: ResendEvent
+  try {
+    event = new Webhook(env.RESEND_WEBHOOK_SECRET).verify(rawBody, {
       'svix-id': id,
       'svix-timestamp': timestamp,
       'svix-signature': signature,
     }) as ResendEvent
-    const providerMessageId = event.data.email_id
-    if (!providerMessageId || !event.type || !event.created_at) {
-      return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
-    }
+  } catch {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
 
+  const providerMessageId = event.data?.email_id
+  if (
+    !providerMessageId || providerMessageId.length > 255
+    || !event.type || event.type.length > 100
+    || !event.created_at || !Number.isFinite(Date.parse(event.created_at))
+  ) {
+    return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
+  }
+
+  try {
     const now = new Date().toISOString()
     const terminal = ['email.delivered', 'email.bounced', 'email.failed'].includes(event.type)
     await env.DB.batch([
@@ -59,6 +79,7 @@ export async function POST(request: Request) {
     ])
     return NextResponse.json({ received: true })
   } catch {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+    console.error('Resend webhook persistence failed.')
+    return NextResponse.json({ error: 'Webhook persistence unavailable' }, { status: 503 })
   }
 }

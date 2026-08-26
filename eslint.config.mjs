@@ -10,9 +10,11 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     ".open-next/**",
+    ".wrangler/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "cloudflare-env.d.ts",
     // Third-party skill bundles and local tooling, not project source.
     // Without these, `npm run lint` drowns in hundreds of phantom errors.
     ".claude/**",

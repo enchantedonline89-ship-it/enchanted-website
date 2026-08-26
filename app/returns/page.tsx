@@ -5,7 +5,7 @@ import { SITE_NAME } from '@/components/seo/site'
 
 const TITLE = 'Returns and cancellations'
 const DESCRIPTION =
-  'Your right to cancel, the condition items must come back in, and how refunds work.'
+  'How to request a cancellation or return and what information to provide.'
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     url: '/returns',
     siteName: SITE_NAME,
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_LB',
   },
   twitter: {
     card: 'summary_large_image',
@@ -32,14 +32,14 @@ export default function ReturnsPage() {
       <BreadcrumbJsonLd items={[{ name: TITLE, path: '/returns' }]} />
       <PageShell
         title="Returns and cancellations"
-        standfirst="Your right to cancel, the condition items must come back in, and how refunds work."
-        meta="Last updated March 2026"
+        standfirst="How to request a cancellation or return and what information to provide."
+        meta="Last updated 26 August 2026"
       >
       <div>
         <section>
-          <h2>Your right to cancel</h2>
+          <h2>Before delivery</h2>
           <p>
-            Per Lebanese Consumer Protection Law, you have 10 days from receipt to cancel your order, provided items are unused, unworn, and have original tags attached.
+            Contact us as soon as possible if you need to cancel. If preparation or delivery has already started, we will tell you what options remain available.
           </p>
         </section>
 
@@ -50,29 +50,20 @@ export default function ReturnsPage() {
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               WhatsApp
             </a>{' '}
-            within 10 days with your order reference number; we will arrange pickup or confirm a drop-off point.
+            with your order number and the reason for the request. We will review it under the applicable consumer-protection requirements and confirm the next steps in writing.
           </p>
         </section>
 
         <section>
           <h2>Condition requirements</h2>
-          <p>Items must be unworn, unwashed, in original packaging with all tags attached.</p>
+          <p>Keep the item unworn, unwashed, in its original packaging, and with all tags attached while a request is being reviewed.</p>
         </section>
 
         <section>
-          <h2>Refund process</h2>
+          <h2>Approved returns and refunds</h2>
           <p>
-            Refunds are issued via Whish Money or cash on collection within 7 business days of receiving the returned item. Note: all orders are cash on delivery, no card on file.
+            If a return or refund is approved, we will confirm the return method, any applicable delivery cost, and the available refund method before you send the item back. Orders are paid in cash on delivery; no payment card is stored.
           </p>
-        </section>
-
-        <section>
-          <h2>Non-Returnable items</h2>
-          <ul>
-            <li>Items marked Final Sale at time of purchase</li>
-            <li>Items that have been worn or washed</li>
-            <li>Returns initiated after 10 days from receipt</li>
-          </ul>
         </section>
 
         <section>

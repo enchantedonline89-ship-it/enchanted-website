@@ -225,7 +225,7 @@ describe('CartDrawer — cart and account-required state machine', () => {
     await waitFor(() =>
       expect(sessionStorage.getItem('enchanted_resume_checkout')).toBe('{"checkout":true}'),
     )
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/account/addresses', expect.anything())
   })
 
   it('opens the sign-in modal from the auth wall', async () => {

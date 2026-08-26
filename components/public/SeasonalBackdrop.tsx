@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react"
-import type { SiteTheme } from "@/types"
+import type { SiteTheme, ThemeIntensity } from "@/types"
 
 const CHRISTMAS_SNOW = [
   ["3%", "3px", "-8s", "18s", "18px", "0.78"],
@@ -38,9 +38,9 @@ const RAMADAN_LANTERNS = [
 
 type SeasonalStyle = CSSProperties & Record<`--seasonal-${string}`, string>
 
-function ChristmasBackdrop() {
+function ChristmasBackdrop({ intensity }: { intensity: ThemeIntensity }) {
   return (
-    <div className="seasonal-backdrop seasonal-backdrop--christmas" aria-hidden="true">
+    <div className="seasonal-backdrop seasonal-backdrop--christmas" data-intensity={intensity} aria-hidden="true">
       <span className="seasonal-backdrop__wash" />
       <span className="seasonal-christmas-garland" />
       <div className="seasonal-snow">
@@ -87,9 +87,9 @@ function ChristmasBackdrop() {
   )
 }
 
-function RamadanBackdrop() {
+function RamadanBackdrop({ intensity }: { intensity: ThemeIntensity }) {
   return (
-    <div className="seasonal-backdrop seasonal-backdrop--ramadan" aria-hidden="true">
+    <div className="seasonal-backdrop seasonal-backdrop--ramadan" data-intensity={intensity} aria-hidden="true">
       <span className="seasonal-backdrop__wash" />
       <span className="seasonal-ramadan-canopy" />
       <div className="seasonal-ramadan-stars">
@@ -136,8 +136,14 @@ function RamadanBackdrop() {
   )
 }
 
-export default function SeasonalBackdrop({ theme }: { theme: SiteTheme }) {
-  if (theme === "christmas") return <ChristmasBackdrop />
-  if (theme === "ramadan") return <RamadanBackdrop />
+export default function SeasonalBackdrop({
+  theme,
+  intensity,
+}: {
+  theme: SiteTheme
+  intensity: ThemeIntensity
+}) {
+  if (theme === "christmas") return <ChristmasBackdrop intensity={intensity} />
+  if (theme === "ramadan") return <RamadanBackdrop intensity={intensity} />
   return null
 }

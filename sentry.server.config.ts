@@ -13,7 +13,7 @@ Sentry.init({
   // 10% in production is plenty for a shop this size and keeps the free tier honest.
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  environment: process.env.ENVIRONMENT ?? process.env.NODE_ENV,
 
   // This shop handles names, phone numbers and delivery addresses. None of it
   // belongs in an error tracker.

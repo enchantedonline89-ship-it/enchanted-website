@@ -1,6 +1,6 @@
-# Enchanted
+# Enchanted Style
 
-Production Next.js 16 storefront and shop-management application for Enchanted,
+Production Next.js 16 storefront and shop-management application for Enchanted Style,
 deployed on Cloudflare Workers with D1, R2, Queues, and Better Auth.
 
 ## Local development
@@ -23,8 +23,9 @@ npm test
 npm run build
 ```
 
-The GitHub verification workflow also performs migration, launch-readiness, and
-dependency-audit checks.
+The GitHub verification workflow also runs desktop/mobile/tablet browser checks,
+launch-readiness checks, dependency audits, Cloudflare type generation, and a
+Worker dry run.
 
 ## Cloudflare deployment
 

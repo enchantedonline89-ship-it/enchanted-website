@@ -5,6 +5,8 @@ import BreadcrumbJsonLd from '@/components/seo/BreadcrumbJsonLd'
 import { SITE_NAME } from '@/components/seo/site'
 import { requireCustomer } from '@/lib/auth/server'
 import { getD1Database } from '@/lib/cloudflare/d1'
+import CancelOrderButton from '@/components/public/CancelOrderButton'
+import { expirePendingOrders } from '@/lib/orders/maintenance'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: '/orders' },
   robots: { index: false, follow: true },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: '/orders', siteName: SITE_NAME, type: 'website', locale: 'en_US' },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: '/orders', siteName: SITE_NAME, type: 'website', locale: 'en_LB' },
 }
 
 type Status = 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled'
@@ -29,6 +31,7 @@ type OrderRow = {
   delivery_fee_cents: number
   total_cents: number
   created_at: string
+  pending_expires_at: string | null
 }
 type ItemRow = {
   product_name: string
@@ -50,11 +53,12 @@ const STATUS: Record<Status, { label: string; className: string }> = {
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 export default async function OrdersPage() {
-  const session = await requireCustomer()
+  const session = await requireCustomer('/orders')
   const db = await getD1Database()
+  if (db) await expirePendingOrders(db)
   const orderRows = db
     ? await db.prepare(
-        `SELECT id, order_number, status, city, area, delivery_fee_cents, total_cents, created_at
+        `SELECT id, order_number, status, city, area, delivery_fee_cents, total_cents, created_at, pending_expires_at
          FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`,
       ).bind(session.user.id).all<OrderRow>()
     : { results: [] as OrderRow[] }
@@ -120,6 +124,16 @@ export default async function OrdersPage() {
                     <div className="flex gap-2"><dt className="text-ink-faint">Delivery</dt><dd className="text-ink-dim">{order.area}, {order.city} · {money(order.delivery_fee_cents)}</dd></div>
                     <div className="flex gap-2"><dt className="text-ink-faint">Total</dt><dd className="tnum text-ink">{money(order.total_cents)}</dd></div>
                   </dl>
+                  {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                    <>
+                      {order.status === 'pending' && order.pending_expires_at && (
+                        <p className="mt-3 text-sm text-ink-dim">
+                          Stock reserved until {new Date(order.pending_expires_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}.
+                        </p>
+                      )}
+                      <CancelOrderButton orderId={order.id} orderNumber={order.order_number} />
+                    </>
+                  )}
                 </li>
               )
             })}

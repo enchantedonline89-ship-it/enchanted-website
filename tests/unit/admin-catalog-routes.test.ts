@@ -45,10 +45,10 @@ const categoryPayload = {
 const productPayload = {
   name: 'Ruby Dress',
   description: '',
-  category_id: null,
+  category_id: id,
   sku: '',
   price: '89.99',
-  image_url: '',
+  image_url: 'https://cdn.example.test/ruby-dress.webp',
   additional_images: [],
   sizes: ['S', 'M'],
   fit_advice: '',
@@ -59,7 +59,7 @@ const productPayload = {
   is_active: true,
   sort_order: 0,
   colors: [],
-  variants: [],
+  variants: [{ color_ref: null, size: 'S', sku: '', stock_quantity: 2 }],
 }
 
 function request(path: string, method: string, body?: unknown) {

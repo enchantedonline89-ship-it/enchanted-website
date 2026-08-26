@@ -127,7 +127,7 @@ export default withSentryConfig(nextConfig, {
 
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
+  webpack: { treeshake: { removeDebugLogging: true } },
 
   // Source maps are uploaded to Sentry and then removed from the deployed
   // output, so stack traces are readable without publishing the source.

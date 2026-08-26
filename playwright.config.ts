@@ -3,14 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * E2E config for Enchanted Style.
  *
- * NOTE: browsers are NOT installed in this workspace — the download was skipped
- * deliberately. Before the first run:
- *
- *   npx playwright install chromium
- *
- * There is no `webServer` block on purpose: a dev server is already running in
- * this environment and Playwright must not start or stop it. Point the suite at
- * whatever port is live:
+ * Locally, point the suite at an existing server. CI starts an isolated Next
+ * server because a test list is not proof that the customer journey renders.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:1215 npx playwright test
  */
@@ -21,8 +15,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
+    command: 'npm run dev -- --hostname 127.0.0.1 --port 1215',
+    url: 'http://127.0.0.1:1215',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:1215',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:1215',
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
     screenshot: 'only-on-failure',
@@ -31,25 +31,16 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'api',
-      testMatch: /orders-api\.spec\.ts/,
-      fullyParallel: false,
-      workers: 1,
-    },
-    {
       name: 'chromium',
-      testIgnore: /orders-api\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      name: 'mobile-safari',
-      testIgnore: /orders-api\.spec\.ts/,
-      use: { ...devices['iPhone 13'] },
+      name: 'mobile',
+      use: { ...devices['iPhone 13'], browserName: 'chromium' },
     },
     {
       name: 'tablet',
-      testIgnore: /orders-api\.spec\.ts/,
-      use: { ...devices['iPad (gen 7)'] },
+      use: { ...devices['iPad (gen 7)'], browserName: 'chromium' },
     },
   ],
 })

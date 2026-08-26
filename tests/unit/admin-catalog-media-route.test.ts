@@ -17,6 +17,7 @@ vi.mock('@/lib/admin-catalog-media', async importOriginal => ({
 }))
 
 const media = await import('@/app/api/admin/media/route')
+const publicMedia = await import('@/app/media/[...key]/route')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -44,12 +45,27 @@ describe('admin catalog media route', () => {
       httpMetadata: expect.objectContaining({ contentType: 'image/jpeg' }),
       customMetadata: { uploadedBy: 'admin-1' },
     }))
-    expect(json.url).toBe('/api/admin/media?key=products%2F2026-08%2F11111111-1111-4111-8111-111111111111.jpg')
+    expect(json.url).toBe('/media/products/2026-08/11111111-1111-4111-8111-111111111111.jpg')
   })
 
   it('rejects malformed public media keys before touching R2', async () => {
     const response = await media.GET(new NextRequest('https://shop.example/api/admin/media?key=../../secret'))
     expect(response.status).toBe(400)
     expect(h.getBucket).not.toHaveBeenCalled()
+  })
+
+  it('serves valid product media from a crawlable public URL', async () => {
+    h.get.mockResolvedValue({
+      body: new Uint8Array([0xff, 0xd8, 0xff]),
+      httpEtag: 'etag-1',
+      writeHttpMetadata(headers: Headers) { headers.set('content-type', 'image/jpeg') },
+    })
+    const response = await publicMedia.GET(
+      new Request('https://shop.example/media/products/2026-08/11111111-1111-4111-8111-111111111111.jpg'),
+      { params: Promise.resolve({ key: ['products', '2026-08', '11111111-1111-4111-8111-111111111111.jpg'] }) },
+    )
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('image/jpeg')
+    expect(response.headers.get('cache-control')).toContain('immutable')
   })
 })

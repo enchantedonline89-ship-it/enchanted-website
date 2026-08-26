@@ -57,6 +57,7 @@ export default function ProductColorPicker({
               key={color.id}
               type="button"
               onClick={() => onSelect(color)}
+              disabled={!inStock}
               aria-label={`Select ${swatchLabel(color, inStock)}`}
               aria-pressed={active}
               title={swatchLabel(color, inStock)}
@@ -64,7 +65,7 @@ export default function ProductColorPicker({
                 active
                   ? 'border-ink ring-1 ring-ink ring-offset-2 ring-offset-paper'
                   : 'border-line-strong hover:border-ink'
-              } ${inStock ? '' : 'opacity-45'}`}
+              } ${inStock ? '' : 'cursor-not-allowed opacity-45'}`}
             >
               <span
                 aria-hidden="true"

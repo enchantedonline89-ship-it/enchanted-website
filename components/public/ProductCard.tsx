@@ -43,9 +43,9 @@ export default function ProductCard({
   const addedTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(addedTimer.current), [])
 
-  const images = [product.image_url, ...(product.additional_images ?? [])].filter(
+  const images = [options.selectedColor?.image_url, product.image_url, ...(product.additional_images ?? [])].filter(
     Boolean,
-  ) as string[]
+  ).filter((src, index, all) => all.indexOf(src) === index) as string[]
 
   function handleAdd() {
     if (options.requiresColor) {

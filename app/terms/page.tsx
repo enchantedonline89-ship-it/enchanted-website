@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     url: '/terms',
     siteName: SITE_NAME,
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_LB',
   },
   twitter: {
     card: 'summary_large_image',
@@ -34,13 +34,13 @@ export default function TermsPage() {
       <PageShell
         title="Terms of service"
         standfirst="The conditions that apply when you browse this catalog and place an order with us."
-        meta="Last updated March 2026"
+        meta="Last updated 26 August 2026"
       >
       <div>
         <section>
           <h2>Who we are</h2>
           <p>
-            Enchanted Style is a Lebanese women&apos;s fashion brand. We sell clothing, shoes, and accessories and process orders via WhatsApp. Contact us at{' '}
+            Enchanted Style is an online women&apos;s fashion store serving Lebanon. Orders are placed on this website. WhatsApp is an optional support channel you can initiate at{' '}
             <a href="https://wa.me/96181492994" className="text-ink hover:underline">
               wa.me/96181492994
             </a>.
@@ -50,7 +50,7 @@ export default function TermsPage() {
         <section>
           <h2>Orders and payment</h2>
           <p>
-            Orders are placed through our website and confirmed via WhatsApp. All payments are collected on delivery (cash or Whish Money). Prices are displayed in US Dollars (USD).
+            An order is submitted through checkout and receives a public order number. Confirmation and status updates are sent by email. Payment is cash on delivery. Prices are displayed in US dollars (USD).
           </p>
         </section>
 
@@ -77,7 +77,7 @@ export default function TermsPage() {
             Refer to our{' '}
             <Link href="/returns" className="text-ink hover:underline">
               Returns Policy
-            </Link>. Consumer rights are governed by Lebanese Consumer Protection Law.
+            </Link>. Nothing in these terms limits rights that apply under Lebanese consumer-protection law.
           </p>
         </section>
 

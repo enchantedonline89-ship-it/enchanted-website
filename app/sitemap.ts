@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
-import { SITE_URL } from "@/components/seo/site"
+import { absoluteUrl, SITE_URL } from "@/components/seo/site"
 import { getCatalog } from "@/lib/catalog"
-import { productHref } from "@/lib/product-url"
+import { categoryHref, productHref } from "@/lib/product-url"
 
 // These reflect substantive, visible content changes rather than request time.
 const POLICY_LAST_UPDATED = new Date("2026-03-01")
@@ -26,7 +26,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(product.updated_at),
     changeFrequency: "weekly",
     priority: 0.8,
-    images: product.image_url ? [product.image_url] : undefined,
+    images: product.image_url ? [absoluteUrl(product.image_url)] : undefined,
+  }))
+
+  const categoryEntries: MetadataRoute.Sitemap = (source === "live" ? categories : []).map((category) => ({
+    url: absoluteUrl(categoryHref(category)),
+    lastModified: new Date(category.updated_at),
+    changeFrequency: "weekly",
+    priority: 0.7,
+    images: category.image_url ? [absoluteUrl(category.image_url)] : undefined,
   }))
 
   return [
@@ -72,6 +80,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.3,
     },
+    ...categoryEntries,
     ...productEntries,
   ]
 }

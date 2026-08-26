@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authorizeAdminRequest } from '@/lib/admin-api'
 import {
   catalogMediaKey,
+  catalogMediaUrl,
   getCatalogMediaBucket,
   isCatalogMediaKey,
   validateCatalogImage,
@@ -10,18 +11,7 @@ import {
 export async function GET(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('key') ?? ''
   if (!isCatalogMediaKey(key)) return NextResponse.json({ error: 'Invalid media key.' }, { status: 400 })
-
-  const bucket = await getCatalogMediaBucket()
-  if (!bucket) return NextResponse.json({ error: 'Media storage unavailable.' }, { status: 503 })
-  const object = await bucket.get(key)
-  if (!object) return NextResponse.json({ error: 'Image not found.' }, { status: 404 })
-
-  const headers = new Headers()
-  object.writeHttpMetadata(headers)
-  headers.set('cache-control', 'public, max-age=31536000, immutable')
-  headers.set('etag', object.httpEtag)
-  headers.set('x-content-type-options', 'nosniff')
-  return new Response(object.body, { headers })
+  return NextResponse.redirect(new URL(catalogMediaUrl(key), request.nextUrl.origin), 308)
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +46,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'The image could not be uploaded.' }, { status: 500 })
   }
 
-  const url = new URL('/api/admin/media', request.nextUrl.origin)
-  url.searchParams.set('key', key)
-  return NextResponse.json({ key, url: `${url.pathname}${url.search}` }, { status: 201 })
+  return NextResponse.json({ key, url: catalogMediaUrl(key) }, { status: 201 })
 }

@@ -55,9 +55,8 @@ export default function GlobalError({
             }}
           />
           <p style={{ color: "#5c574e", lineHeight: 1.7, margin: "0 0 2rem" }}>
-            The page failed to load. Nothing you were doing has been charged, and
-            no order is placed until you send it to us on WhatsApp. Try again, or
-            message us and we will take the order by hand.
+            The page failed to load. Payment is collected only when a delivery arrives.
+            Try again, or contact us on WhatsApp if you need help.
           </p>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <button

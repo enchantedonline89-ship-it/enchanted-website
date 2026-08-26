@@ -9,6 +9,6 @@ Sentry.init({
   dsn: process.env.SENTRY_DSN,
   enabled: Boolean(process.env.SENTRY_DSN),
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  environment: process.env.ENVIRONMENT ?? process.env.NODE_ENV,
   sendDefaultPii: false,
 })
